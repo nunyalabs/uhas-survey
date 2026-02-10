@@ -31,9 +31,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await db.init();
     console.log('✅ Database initialized');
 
-    // Update offline status UI
-    offlineManager.updateStatusUI();
-
     // Render UI
     renderTabs();
     await renderCurrentTab();

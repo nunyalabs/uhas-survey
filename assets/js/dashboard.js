@@ -25,7 +25,7 @@ class Dashboard {
           </div>
 
           <div class="section-header">
-            <h5><i class="bi bi-speedometer2"></i> Dashboard</h5>
+            <h5>Questionnaires</h5>
             <small>Select a group to fill out a questionnaire</small>
           </div>
 
