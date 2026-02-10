@@ -41,6 +41,21 @@
     </div>
   </header>
 
+  <!-- iOS Add to Home Screen Modal -->
+  <div id="iosInstallModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
+    <div style="background:#fff; max-width:400px; margin:10vh auto; padding:2rem; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,0.2); text-align:center;">
+      <h2 style="margin-bottom:1rem;">📱 Add to Home Screen</h2>
+      <p style="margin-bottom:1rem;">To use this app offline:</p>
+      <ol style="text-align:left; margin-bottom:1rem;">
+        <li>Tap the <b>Share</b> button (box with arrow)</li>
+        <li>Scroll and tap <b>Add to Home Screen</b></li>
+        <li>Tap <b>Add</b> to confirm</li>
+      </ol>
+      <p>The app will then work offline!</p>
+      <button class="btn btn-primary" id="closeIOSModalBtn">Got it</button>
+    </div>
+  </div>
+
   <!-- Main Content -->
   <main class="container container-md" style="padding-top: var(--space-lg); padding-bottom: 100px;">
     <!-- Page Header -->

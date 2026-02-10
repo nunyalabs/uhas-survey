@@ -12,13 +12,13 @@ class PWAInstaller {
 
   init() {
     // Check if app is already installed
-    if (window.navigator.standalone === true) {
+    if (globalThis.navigator.standalone === true) {
       this.isInstalled = true;
       return;
     }
 
     // Listen for beforeinstallprompt event (Android)
-    window.addEventListener('beforeinstallprompt', (e) => {
+    globalThis.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       this.deferredPrompt = e;
       this.showAndroidPrompt();
@@ -30,7 +30,7 @@ class PWAInstaller {
     }
 
     // Handle successful installation
-    window.addEventListener('appinstalled', () => {
+    globalThis.addEventListener('appinstalled', () => {
       console.log('✅ App installed successfully');
       this.isInstalled = true;
       this.hidePrompt();
@@ -41,7 +41,7 @@ class PWAInstaller {
    * Check if device is iOS
    */
   isIOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    return /iPad|iPhone|iPod/.test(globalThis.navigator.userAgent) && !globalThis.MSStream;
   }
 
   /**
@@ -49,9 +49,9 @@ class PWAInstaller {
    */
   isAlreadyInstalled() {
     return (
-      window.navigator.standalone === true ||
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.matchMedia('(display-mode: fullscreen)').matches
+      globalThis.navigator.standalone === true ||
+      globalThis.matchMedia('(display-mode: standalone)').matches ||
+      globalThis.matchMedia('(display-mode: fullscreen)').matches
     );
   }
 
@@ -72,24 +72,25 @@ class PWAInstaller {
   }
 
   /**
-   * Show iOS install guide
+   * Show iOS install guide (custom modal)
    */
   showIOSPrompt() {
     if (this.isAlreadyInstalled()) return;
 
-    // Show one-time guide for iOS
     const hasSeeniOSGuide = localStorage.getItem('ios-install-guide-shown');
     if (!hasSeeniOSGuide) {
       setTimeout(() => {
-        alert(
-          '📱 Add to Home Screen\n\n' +
-          'To use this app offline:\n\n' +
-          '1. Tap the Share button (box with arrow)\n' +
-          '2. Scroll and tap "Add to Home Screen"\n' +
-          '3. Tap "Add" to confirm\n\n' +
-          'The app will then work offline!'
-        );
-        localStorage.setItem('ios-install-guide-shown', 'true');
+        const modal = document.getElementById('iosInstallModal');
+        if (modal) {
+          modal.style.display = 'block';
+          const closeBtn = document.getElementById('closeIOSModalBtn');
+          if (closeBtn) {
+            closeBtn.onclick = () => {
+              modal.style.display = 'none';
+              localStorage.setItem('ios-install-guide-shown', 'true');
+            };
+          }
+        }
       }, 2000);
     }
   }
@@ -126,5 +127,5 @@ class PWAInstaller {
 
 // Initialize on load
 window.addEventListener('load', () => {
-  new PWAInstaller();
+  globalThis.pwaInstaller = new PWAInstaller();
 });

@@ -11,6 +11,7 @@ const urlsToCache = [
   './questions.js',
   './manifest.json',
   './assets/css/main.css',
+  // JS files
   './assets/js/config.js',
   './assets/js/db.js',
   './assets/js/participant.js',
@@ -18,9 +19,26 @@ const urlsToCache = [
   './assets/js/exchange.js',
   './assets/js/dashboard.js',
   './assets/js/pwa-install.js',
+  './assets/js/auth.js',
+  './assets/js/auth-guard.js',
+  './assets/js/firebase-config.js',
+  './assets/js/sw-updater.js',
+  './assets/js/sync.js',
+  // Vendor JS/CSS
+  './vendor/bootstrap/bootstrap.bundle.min.js',
+  './vendor/bootstrap/bootstrap.min.css',
   './vendor/bootstrap-icons/bootstrap-icons.min.css',
+  './vendor/bootstrap-icons/fonts/space-grotesk.css',
+  './vendor/firebase/firebase-app-compat.js',
+  './vendor/firebase/firebase-auth-compat.js',
+  './vendor/firebase/firebase-firestore-compat.js',
+  './vendor/firebase/firebase-storage-compat.js',
+  './vendor/tailwind/tailwind.min.css',
+  // Icons
+  './assets/icons/icon-192.svg',
+  // Images
   './assets/img/uhas.jpg',
-  './assets/img/hpi.png'
+  './assets/img/hpi.png',
 ];
 
 /**
@@ -41,7 +59,7 @@ self.addEventListener('install', event => {
       });
     })
   );
-  self.skipWaiting();
+  globalThis.skipWaiting();
 });
 
 /**
@@ -61,7 +79,7 @@ self.addEventListener('activate', event => {
       );
     })
   );
-  self.clients.claim();
+  globalThis.clients.claim();
 });
 
 /**
