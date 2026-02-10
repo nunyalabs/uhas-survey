@@ -3,6 +3,8 @@
    Offline-first with IndexedDB storage
    ============================================ */
 
+console.log('🔷 config.js: Script loading started');
+
 const CONFIG = {
   // App Info
   app: {
@@ -47,3 +49,5 @@ const CONFIG = {
 
 // Make available globally
 window.CONFIG = CONFIG;
+
+console.log('✅ config.js: window.CONFIG assigned', window.CONFIG);

@@ -4,6 +4,8 @@
    Matches Toolkit A system
    ============================================ */
 
+console.log('🔷 participant.js: Script loading started');
+
 const PARTICIPANT_TYPES = {
   patient: {
     prefix: 'PAT',
@@ -177,4 +179,6 @@ const participantManager = new ParticipantManager();
 
 // Make available globally
 window.participantManager = participantManager;
+
+console.log('✅ participant.js: window.participantManager assigned', window.participantManager);
 window.PARTICIPANT_TYPES = PARTICIPANT_TYPES;

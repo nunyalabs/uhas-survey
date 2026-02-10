@@ -3,6 +3,8 @@
    Single IndexedDB for all modules
    ============================================ */
 
+console.log('🔷 db.js: Script loading started');
+
 class UnifiedDB {
   constructor() {
     this.db = null;
@@ -298,3 +300,5 @@ const db = new UnifiedDB();
 
 // Make available globally
 window.db = db;
+
+console.log('✅ db.js: window.db assigned', window.db);

@@ -3,6 +3,8 @@
    Display participant groups and stats
    ============================================ */
 
+console.log('🔷 dashboard.js: Script loading started');
+
 class Dashboard {
   static async render() {
     try {
@@ -206,3 +208,5 @@ class Dashboard {
 
 // Make available globally
 window.Dashboard = Dashboard;
+
+console.log('✅ dashboard.js: window.Dashboard assigned', window.Dashboard);

@@ -3,6 +3,13 @@
    Uses unified scripts: db.js, participant.js, sync.js
    ============================================ */
 
+console.log('🔷 app.js: Script loading started');
+console.log('🔍 Checking dependencies at load time:');
+console.log('  - window.db:', window.db);
+console.log('  - window.participantManager:', window.participantManager);
+console.log('  - window.Dashboard:', window.Dashboard);
+console.log('  - window.CONFIG:', window.CONFIG);
+
 // ===== STATE =====
 let currentTab = 'dashboard';
 let currentView = 'list'; // 'list' or 'group'
