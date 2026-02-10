@@ -5,24 +5,22 @@
 
 const CACHE_NAME = 'uhas-hpi-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/survey/index.html',
-  '/assets/css/main.css',
-  '/assets/js/config.js',
-  '/assets/js/db.js',
-  '/assets/js/participant.js',
-  '/assets/js/offline.js',
-  '/assets/js/exchange.js',
-  '/assets/js/auth-guard.js',
-  '/vendor/bootstrap/bootstrap.bundle.min.js',
-  '/vendor/bootstrap/bootstrap.min.css',
-  '/vendor/bootstrap-icons/bootstrap-icons.min.css',
-  '/vendor/tailwind/tailwind.min.css',
-  '/assets/img/uhas.jpg',
-  '/assets/img/hpi.png',
-  '/assets/icons/icon-192.svg',
-  '/assets/icons/icon-512.svg'
+  './',
+  './index.html',
+  './app.js',
+  './questions.js',
+  './manifest.json',
+  './assets/css/main.css',
+  './assets/js/config.js',
+  './assets/js/db.js',
+  './assets/js/participant.js',
+  './assets/js/offline.js',
+  './assets/js/exchange.js',
+  './assets/js/dashboard.js',
+  './assets/js/pwa-install.js',
+  './vendor/bootstrap-icons/bootstrap-icons.min.css',
+  './assets/img/uhas.jpg',
+  './assets/img/hpi.png'
 ];
 
 /**
