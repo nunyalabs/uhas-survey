@@ -26,8 +26,7 @@ const QUESTIONNAIRES = {
                         showIf: { field: 'studySite', value: 'Other' },
                         required: true
                     },
-                    { id: 'date', label: 'Date', type: 'date', required: true },
-                    { id: 'interviewer', label: 'Interviewer Initials', type: 'text', maxlength: 5, required: true }
+                    { id: 'date', label: 'Date', type: 'date', required: true }
                 ]
             },
             {
@@ -310,8 +309,7 @@ const QUESTIONNAIRES = {
                         showIf: { field: 'studySite', value: 'Other' },
                         required: true
                     },
-                    { id: 'date', label: 'Date', type: 'date', required: true },
-                    { id: 'interviewer', label: 'Interviewer Initials', type: 'text', maxlength: 5, required: true }
+                    { id: 'date', label: 'Date', type: 'date', required: true }
                 ]
             },
             {
@@ -530,8 +528,7 @@ const QUESTIONNAIRES = {
                         showIf: { field: 'studySite', value: 'Other' },
                         required: true
                     },
-                    { id: 'date', label: 'Date', type: 'date', required: true },
-                    { id: 'interviewer', label: 'Interviewer Initials', type: 'text', maxlength: 5, required: true }
+                    { id: 'date', label: 'Date', type: 'date', required: true }
                 ]
             },
             {
@@ -787,8 +784,7 @@ const QUESTIONNAIRES = {
                         showIf: { field: 'studySite', value: 'Other' },
                         required: true
                     },
-                    { id: 'date', label: 'Date', type: 'date', required: true },
-                    { id: 'interviewer', label: 'Interviewer Initials', type: 'text', maxlength: 5, required: true }
+                    { id: 'date', label: 'Date', type: 'date', required: true }
                 ]
             },
             {
@@ -1111,8 +1107,7 @@ const QUESTIONNAIRES = {
                         showIf: { field: 'studySite', value: 'Other' },
                         required: true
                     },
-                    { id: 'date', label: 'Date', type: 'date', required: true },
-                    { id: 'interviewer', label: 'Interviewer Initials', type: 'text', maxlength: 5, required: true }
+                    { id: 'date', label: 'Date', type: 'date', required: true }
                 ]
             },
             {
