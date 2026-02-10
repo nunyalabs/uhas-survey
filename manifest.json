@@ -1,0 +1,43 @@
+{
+  "name": "UHAS-HPI Survey",
+  "short_name": "Survey",
+  "description": "Hypertension Survey Suite — UHAS-HPI Research",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0c8778",
+  "background_color": "#f4f6f8",
+  "icons": [
+    {
+      "src": "../assets/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "../assets/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "../assets/img/screenshot-mobile.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["health", "medical"],
+  "shortcuts": [
+    {
+      "name": "Start Survey",
+      "short_name": "Survey",
+      "description": "Start a new survey response",
+      "url": "./index.html?tab=patients",
+      "icons": [{"src": "../assets/icons/icon-192.svg", "sizes": "192x192"}]
+    }
+  ]
+}
