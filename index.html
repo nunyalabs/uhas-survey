@@ -72,29 +72,25 @@
     <div class="tab-content" id="surveyContent"></div>
   </main>
 
-  <!-- Bottom Action Bar -->
-  <div class="bottom-bar" id="bottomBar">
+  <!-- Bottom Action Bar (form views only) -->
+  <div class="bottom-bar" id="bottomBar" style="display:none;">
     <div class="container container-md">
-      <button class="btn btn-outline" onclick="clearCurrentForm()" id="clearBtn" style="display:none;">
+      <button class="btn btn-outline" onclick="clearCurrentForm()" id="clearBtn">
         <i class="bi bi-arrow-counterclockwise"></i> Clear
       </button>
-      <button class="btn btn-outline" id="importBtn" style="display:none;">
-        <i class="bi bi-upload"></i> Import
-      </button>
-      <button class="btn btn-outline" onclick="exportData()" id="exportBtn">
-        <i class="bi bi-download"></i> Export
-      </button>
-      <button class="btn btn-primary" onclick="submitCurrentForm()" id="saveBtn" style="display:none;">
+      <button class="btn btn-primary" onclick="submitCurrentForm()" id="saveBtn">
         <i class="bi bi-save"></i> Save
       </button>
-      <button class="btn btn-outline" onclick="showDashboard()" id="backBtn" style="display:none;">
-        <i class="bi bi-arrow-left"></i> Back to Dashboard
+      <button class="btn btn-outline" onclick="showDashboard()" id="backBtn">
+        <i class="bi bi-arrow-left"></i> Back
       </button>
     </div>
   </div>
 
-  <!-- Hidden Import File Input -->
-  <input type="file" id="importFileInput" style="display:none;" accept=".json,.csv" />
+  <!-- Scroll to Top Button -->
+  <button id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" style="display:none; position:fixed; bottom:80px; right:20px; z-index:101; width:44px; height:44px; border-radius:50%; background:var(--primary, #0c8778); color:#fff; border:none; box-shadow:0 2px 8px rgba(0,0,0,0.2); cursor:pointer; align-items:center; justify-content:center; font-size:1.25rem;">
+    <i class="bi bi-arrow-up"></i>
+  </button>
 
   <!-- Database & Offline Scripts -->
   <script src="./assets/js/config.js"></script>

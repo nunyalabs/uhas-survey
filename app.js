@@ -49,8 +49,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!input.value) input.value = today;
     });
 
-    // Setup import button
-    setupImportButton();
+    // Setup scroll-to-top button
+    setupScrollToTop();
 
     console.log('✅ Survey app ready');
   } catch (error) {
@@ -77,13 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderTabs() {
   const container = document.getElementById('surveyTabs');
   container.innerHTML = '';
-
-  // Add Dashboard tab only - all forms accessible via cards
-  const dashboardTab = document.createElement('button');
-  dashboardTab.className = 'tab active';
-  dashboardTab.setAttribute('data-tab', 'dashboard');
-  dashboardTab.innerHTML = `<i class="bi bi-speedometer2"></i> <span>Dashboard</span>`;
-  container.appendChild(dashboardTab);
+  // No tab buttons needed - dashboard is the default view
 }
 
 function attachTabListeners() {
@@ -108,6 +102,8 @@ async function renderCurrentTab() {
 
   if (currentTab === 'dashboard') {
     container.innerHTML = await Dashboard.render();
+  } else if (currentTab === 'records') {
+    container.innerHTML = await RecordsPage.render();
   } else {
     const questionnaire = QUESTIONNAIRES[currentTab];
 
@@ -122,13 +118,8 @@ async function renderCurrentTab() {
 }
 
 function updateBottomBar() {
-  const isDashboard = currentTab === 'dashboard';
-  
-  document.getElementById('clearBtn').style.display = isDashboard ? 'none' : 'block';
-  document.getElementById('importBtn').style.display = isDashboard ? 'none' : 'block';
-  document.getElementById('saveBtn').style.display = isDashboard ? 'none' : 'block';
-  document.getElementById('backBtn').style.display = isDashboard ? 'none' : 'block';
-  document.getElementById('exportBtn').style.display = isDashboard ? 'block' : 'block';
+  const isDashboard = currentTab === 'dashboard' || currentTab === 'records';
+  document.getElementById('bottomBar').style.display = isDashboard ? 'none' : 'flex';
 }
 
 // ===== QUESTIONNAIRE RENDERING =====
@@ -648,46 +639,16 @@ async function submitCurrentForm() {
   }
 }
 
-// ===== IMPORT/EXPORT =====
-function setupImportButton() {
-  const importBtn = document.getElementById('importBtn');
-  const fileInput = document.getElementById('importFileInput');
-
-  if (importBtn && fileInput) {
-    importBtn.addEventListener('click', () => {
-      fileInput.click();
-    });
-
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      try {
-        let count = 0;
-        if (file.name.endsWith('.json')) {
-          count = await DataExchange.importJSON(file);
-        } else if (file.name.endsWith('.csv')) {
-          count = await DataExchange.importCSV(file);
-        } else {
-          alert('❌ Unsupported file format. Use JSON or CSV.');
-          return;
-        }
-
-        alert(`✅ Successfully imported ${count} records`);
-        fileInput.value = '';
-        // Refresh dashboard if visible
-        if (currentTab === 'dashboard') {
-          renderCurrentTab();
-        }
-      } catch (error) {
-        console.error('❌ Import failed:', error);
-        alert(`❌ Import failed: ${error.message}`);
-        fileInput.value = '';
-      }
-    });
-  }
+// ===== SCROLL TO TOP =====
+function setupScrollToTop() {
+  const btn = document.getElementById('scrollTopBtn');
+  if (!btn) return;
+  window.addEventListener('scroll', () => {
+    btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
+  });
 }
 
+// ===== EXPORT =====
 async function exportData() {
   try {
     const format = prompt('Export format? Enter "json" or "csv":', 'json').toLowerCase();
@@ -713,19 +674,21 @@ async function showDashboard() {
   currentView = 'list';
   selectedGroup = null;
   
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelector('[data-tab="dashboard"]').classList.add('active');
-  
   await renderCurrentTab();
+}
+
+async function showRecords() {
+  currentTab = 'records';
+  currentView = 'list';
+  selectedGroup = null;
+  await renderCurrentTab();
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 function openQuestionnaire(questionnaireId) {
   currentTab = questionnaireId;
   currentView = 'list';
   selectedGroup = null;
-  
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelector('[data-tab="dashboard"]').classList.add('active');
   
   renderCurrentTab();
 }
@@ -738,25 +701,8 @@ async function viewParticipantGroup(type) {
 }
 
 function viewResponse(id) {
-  if (typeof id === 'object') {
-    // Old format - backward compatibility
-    const formatted = JSON.stringify(id.data, null, 2);
-    alert(`Response Details:\n\nID: ${id.participantId}\nType: ${id.type}\n\nData:\n${formatted}`);
-  } else {
-    // New string ID format - convert to number if needed
-    const numId = typeof id === 'string' ? parseInt(id, 10) : id;
-    db.get('surveys', numId).then(resp => {
-      if (resp) {
-        const formatted = JSON.stringify(resp.data, null, 2);
-        alert(`Response Details:\n\nID: ${resp.participantId}\nType: ${resp.type}\n\nDate: ${new Date(resp.createdAt).toLocaleString()}\n\nData:\n${formatted}`);
-      } else {
-        alert('❌ Response not found');
-      }
-    }).catch(err => {
-      console.error('Failed to retrieve response:', err);
-      alert('❌ Failed to retrieve response');
-    });
-  }
+  // Share the record as JSON file directly
+  shareOneRecord(id);
 }
 
 async function deleteResponse(id) {
@@ -768,6 +714,86 @@ async function deleteResponse(id) {
   } catch (error) {
     console.error('Delete failed:', error);
     alert('❌ Failed to delete');
+  }
+}
+
+// ===== SHARE & EXPORT =====
+function _buildFileName(survey) {
+  const pid = survey.participantId || survey.id;
+  const site = (survey.studySite || 'unknown').replace(/[^a-zA-Z0-9-]/g, '_');
+  const date = new Date(survey.createdAt).toISOString().split('T')[0];
+  return `${pid}_${site}_${date}.json`;
+}
+
+async function shareOneRecord(id) {
+  try {
+    if (!db.db) await db.init();
+    const numId = typeof id === 'string' ? Number.parseInt(id, 10) : id;
+    const survey = await db.get('surveys', numId);
+    if (!survey) { alert('Record not found'); return; }
+
+    const jsonStr = JSON.stringify(survey, null, 2);
+    const fileName = _buildFileName(survey);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const file = new File([blob], fileName, { type: 'application/json' });
+
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: fileName, files: [file] });
+    } else {
+      DataExchange._downloadFile(jsonStr, fileName, 'application/json');
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Share failed:', error);
+      alert('❌ Share failed: ' + error.message);
+    }
+  }
+}
+
+async function shareAllRecords() {
+  try {
+    if (!db.db) await db.init();
+    const surveys = await db.getAll('surveys');
+    if (surveys.length === 0) { alert('No records to share'); return; }
+
+    const files = surveys.map(s => {
+      const jsonStr = JSON.stringify(s, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      return new File([blob], _buildFileName(s), { type: 'application/json' });
+    });
+
+    if (navigator.canShare?.({ files })) {
+      await navigator.share({ title: 'UHAS Survey Records', files });
+    } else {
+      // Fallback: download each file
+      surveys.forEach(s => {
+        const jsonStr = JSON.stringify(s, null, 2);
+        DataExchange._downloadFile(jsonStr, _buildFileName(s), 'application/json');
+      });
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Share failed:', error);
+      alert('❌ Share failed: ' + error.message);
+    }
+  }
+}
+
+async function exportAllRecords() {
+  try {
+    if (!db.db) await db.init();
+    const surveys = await db.getAll('surveys');
+    if (surveys.length === 0) { alert('No records to export'); return; }
+
+    surveys.forEach(s => {
+      const jsonStr = JSON.stringify(s, null, 2);
+      DataExchange._downloadFile(jsonStr, _buildFileName(s), 'application/json');
+    });
+
+    alert(`✅ Exported ${surveys.length} record(s)`);
+  } catch (error) {
+    console.error('Export failed:', error);
+    alert('❌ Export failed: ' + error.message);
   }
 }
 

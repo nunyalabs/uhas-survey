@@ -1367,6 +1367,250 @@ const QUESTIONNAIRES = {
         ]
     },
 
+    researchers: {
+        id: 'researchers',
+        icon: 'bi-flask',
+        title: 'Researcher Questionnaire',
+        idPrefix: 'RES',
+        sections: [
+            {
+                id: 'meta',
+                title: 'Basic Information',
+                questions: [
+                    { 
+                        id: 'studySite', 
+                        label: 'Study Site', 
+                        type: 'select', 
+                        required: true,
+                        options: ['Tetteh Quarshie Memorial Hospital', 'Atibie Government Hospital', 'Atua Government Hospital', 'Oda Government Hospital', 'Suhum Government Hospital', 'ERHD', 'Center for Plant Medicine Research', 'Other']
+                    },
+                    {
+                        id: 'studySiteOther',
+                        label: 'Please specify study site',
+                        type: 'text',
+                        showIf: { field: 'studySite', value: 'Other' },
+                        required: true
+                    },
+                    { id: 'date', label: 'Date', type: 'date', required: true }
+                ]
+            },
+            {
+                id: 'sectionA',
+                title: 'SECTION A: PROFESSIONAL BACKGROUND',
+                questions: [
+                    {
+                        id: 'researchField',
+                        label: 'A1. Primary research field',
+                        type: 'select',
+                        required: true,
+                        options: ['Clinical medicine', 'Public health/Epidemiology', 'Pharmacology', 'Traditional/Herbal medicine', 'Nursing', 'Health systems', 'Biostatistics', 'Social/Behavioral science', 'Digital health/Informatics', 'Other']
+                    },
+                    {
+                        id: 'highestDegree',
+                        label: 'A2. Highest academic degree',
+                        type: 'select',
+                        required: true,
+                        options: ['PhD/DrPH', 'MD/MBChB', 'PharmD', 'Master\'s degree', 'Bachelor\'s degree', 'Other']
+                    },
+                    {
+                        id: 'researchExperience',
+                        label: 'A3. Years of research experience',
+                        type: 'select',
+                        required: true,
+                        options: ['Less than 2 years', '2-5 years', '6-10 years', '11-15 years', 'More than 15 years']
+                    },
+                    {
+                        id: 'affiliation',
+                        label: 'A4. Current affiliation',
+                        type: 'select',
+                        required: true,
+                        options: ['University/Academic institution', 'Research institute', 'Hospital/Clinical facility', 'Government agency', 'NGO/International organization', 'Private sector', 'Other']
+                    },
+                    {
+                        id: 'hptResearch',
+                        label: 'A5. Have you conducted hypertension research?',
+                        type: 'select',
+                        required: true,
+                        options: ['Yes, extensively', 'Yes, some studies', 'No, but related NCD research', 'No']
+                    }
+                ]
+            },
+            {
+                id: 'sectionB',
+                title: 'SECTION B: RESEARCH LANDSCAPE',
+                questions: [
+                    {
+                        id: 'researchGaps',
+                        label: 'B1. Most critical research gaps in hypertension management in Ghana? (Select up to 3)',
+                        type: 'checkbox',
+                        options: ['Treatment effectiveness', 'Herbal medicine interactions', 'Patient adherence factors', 'Health system delivery', 'Digital health interventions', 'Cost-effectiveness', 'Community-based approaches', 'Prevention strategies', 'Personalized medicine', 'Other']
+                    },
+                    {
+                        id: 'evidenceQuality',
+                        label: 'B2. Quality of existing evidence on herbal medicine for hypertension?',
+                        type: 'select',
+                        required: true,
+                        options: ['Strong/High quality', 'Moderate', 'Weak/Low quality', 'Very limited/No evidence', "Don't know"]
+                    },
+                    {
+                        id: 'researchMethodologies',
+                        label: 'B3. Most appropriate methodologies? (Select all)',
+                        type: 'checkbox',
+                        options: ['Randomized controlled trials', 'N-of-1 trials', 'Observational cohort studies', 'Mixed-methods research', 'Implementation science', 'Systematic reviews', 'Qualitative studies', 'Community-based participatory research', 'Other']
+                    }
+                ]
+            },
+            {
+                id: 'sectionC',
+                title: 'SECTION C: TRADITIONAL MEDICINE RESEARCH',
+                description: 'Rate your agreement: 1=Strongly Disagree, 5=Strongly Agree',
+                questions: [
+                    {
+                        id: 'herbalResearchExperience',
+                        label: 'C1. Have you researched traditional/herbal medicine?',
+                        type: 'select',
+                        required: true,
+                        options: ['Yes, primary focus', 'Yes, part of broader work', 'No, but interested', 'No, not interested']
+                    },
+                    {
+                        id: 'herbalResearchChallenges',
+                        label: 'C2. Main challenges researching herbal medicine? (Select all)',
+                        type: 'checkbox',
+                        options: ['Standardization of preparations', 'Lack of funding', 'Ethical considerations', 'Herbalist cooperation', 'Quality control', 'Regulatory barriers', 'Measuring outcomes', 'Publication bias', 'Limited prior evidence', 'Other']
+                    },
+                    {
+                        id: 'tradMedBeliefs',
+                        type: 'scale',
+                        required: true,
+                        scale: [1, 2, 3, 4, 5],
+                        items: [
+                            { id: 'c3', text: 'C3. Traditional medicine research deserves more funding' },
+                            { id: 'c4', text: 'C4. Herbal treatments can be rigorously evaluated' },
+                            { id: 'c5', text: 'C5. Integration of traditional and conventional medicine is scientifically justified' },
+                            { id: 'c6', text: 'C6. Existing frameworks adequately support integrative research' },
+                            { id: 'c7', text: 'C7. Collaboration with herbalists enhances research quality' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'sectionD',
+                title: 'SECTION D: N-OF-1 TRIALS & PERSONALIZED APPROACHES',
+                description: 'Rate your agreement: 1=Strongly Disagree, 5=Strongly Agree',
+                questions: [
+                    {
+                        id: 'nof1Familiarity',
+                        label: 'D1. Familiarity with N-of-1 trial methodology?',
+                        type: 'select',
+                        required: true,
+                        options: ['Very familiar - have conducted', 'Familiar - have studied', 'Somewhat familiar', 'Not familiar']
+                    },
+                    {
+                        id: 'nof1Applicability',
+                        label: 'D2. Applicability of N-of-1 trials for hypertension in Ghana?',
+                        type: 'select',
+                        required: true,
+                        options: ['Highly applicable', 'Somewhat applicable', 'Uncertain', 'Not very applicable', 'Not applicable']
+                    },
+                    {
+                        id: 'nof1Advantages',
+                        label: 'D3. Main advantages of N-of-1 trials? (Select all)',
+                        type: 'checkbox',
+                        options: ['Patient-centered evidence', 'Smaller sample sizes', 'Individualized treatment', 'Real-world conditions', 'Cost-effective', 'Faster results', 'Ethical advantages', 'Patient engagement', 'Other']
+                    },
+                    {
+                        id: 'nof1Barriers',
+                        label: 'D4. Main barriers to N-of-1 trials? (Select all)',
+                        type: 'checkbox',
+                        options: ['Lack of awareness', 'Statistical complexity', 'Clinical training needs', 'Patient burden', 'Limited generalizability', 'Technology requirements', 'Regulatory uncertainty', 'Funding challenges', 'Other']
+                    },
+                    {
+                        id: 'personalizedBeliefs',
+                        type: 'scale',
+                        required: true,
+                        scale: [1, 2, 3, 4, 5],
+                        items: [
+                            { id: 'e5', text: 'D5. N-of-1 trials can generate high-quality evidence' },
+                            { id: 'e6', text: 'D6. Personalized medicine is feasible in Ghana' },
+                            { id: 'e7', text: 'D7. Digital tools can support N-of-1 trial implementation' },
+                            { id: 'e8', text: 'D8. N-of-1 results can inform clinical guidelines' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'sectionE',
+                title: 'SECTION E: DIGITAL HEALTH & TECHNOLOGY',
+                questions: [
+                    {
+                        id: 'digitalToolsUsed',
+                        label: 'E1. Digital tools used in your research? (Select all)',
+                        type: 'checkbox',
+                        options: ['Mobile data collection', 'Electronic health records', 'mHealth apps', 'Wearable devices', 'Telemedicine platforms', 'Data analytics tools', 'AI/Machine learning', 'None', 'Other']
+                    },
+                    {
+                        id: 'digitalResearchFeasibility',
+                        label: 'E2. Feasibility of digital health research in Ghana?',
+                        type: 'select',
+                        required: true,
+                        options: ['Very feasible', 'Somewhat feasible', 'Neutral', 'Somewhat unfeasible', 'Not feasible']
+                    },
+                    {
+                        id: 'digitalBarriers',
+                        label: 'E3. Main barriers to digital health research? (Select all)',
+                        type: 'checkbox',
+                        options: ['Limited internet access', 'Low digital literacy', 'Data privacy/security', 'Cost of technology', 'Lack of local platform', 'Regulatory gaps', 'Power supply', 'Technical support', 'IRB/Ethics challenges', 'Other']
+                    },
+                    {
+                        id: 'appResearchInterest',
+                        label: 'E4. Interest in mobile app for integrative hypertension research?',
+                        type: 'select',
+                        required: true,
+                        options: ['Very interested', 'Somewhat interested', 'Neutral', 'Not very interested', 'Not interested']
+                    }
+                ]
+            },
+            {
+                id: 'sectionF',
+                title: 'SECTION F: COLLABORATION & CAPACITY',
+                questions: [
+                    {
+                        id: 'collaborationWillingness',
+                        label: 'F1. Willingness to collaborate on integrative care research?',
+                        type: 'select',
+                        required: true,
+                        options: ['Very willing', 'Somewhat willing', 'Neutral', 'Not very willing', 'Not willing']
+                    },
+                    {
+                        id: 'collaborationPartners',
+                        label: 'F2. Preferred research partners? (Select all)',
+                        type: 'checkbox',
+                        options: ['Clinical researchers', 'Herbalists/Traditional healers', 'Pharmacologists', 'Public health researchers', 'Digital health experts', 'Policy researchers', 'International collaborators', 'Community organizations', 'Other']
+                    },
+                    {
+                        id: 'capacityNeeds',
+                        label: 'F3. Capacity building needs for integrative research? (Select all)',
+                        type: 'checkbox',
+                        options: ['N-of-1 trial methodology', 'Traditional medicine evaluation', 'Digital health tools', 'Mixed-methods approaches', 'Community engagement', 'Grant writing', 'Statistical methods', 'Ethics of integrative research', 'Other']
+                    },
+                    {
+                        id: 'fundingSources',
+                        label: 'F4. Most viable funding sources? (Select all)',
+                        type: 'checkbox',
+                        options: ['Government/National funds', 'International grants (NIH, Wellcome, etc.)', 'WHO/AFRO', 'Private foundations', 'Industry partnerships', 'University internal funds', 'Other']
+                    },
+                    {
+                        id: 'researchPriority',
+                        label: 'F5. What should be the top research priority?',
+                        type: 'select',
+                        required: true,
+                        options: ['Safety of herbal-drug combinations', 'Efficacy of integrative approaches', 'Patient preferences & adherence', 'Digital health interventions', 'Health system integration models', 'Cost-effectiveness studies', 'Community-based interventions', 'Other']
+                    }
+                ]
+            }
+        ]
+    },
+
     // Data view tab
     data: {
         id: 'data',
