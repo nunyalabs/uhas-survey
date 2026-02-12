@@ -152,6 +152,19 @@ function renderQuestionnaire(q) {
     });
   });
 
+  // ADD "Save & Share" button at the end of the form
+  html += `
+    <div class="card mb-3" style="background-color: transparent; border: none; box-shadow: none;">
+      <button class="btn btn-primary" type="button" onclick="submitAndShareCurrentForm()" 
+              style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem; background-color: #25D366; border-color: #25D366; font-size: 1.1rem; font-weight: 600;">
+        <i class="bi bi-whatsapp"></i> Save & Share Now
+      </button>
+      <p style="text-align: center; margin-top: 0.5rem; font-size: 0.85rem; color: var(--color-text-muted);">
+        Save response and open WhatsApp immediately
+      </p>
+    </div>
+  `;
+
   html += `</form>`;
   return html;
 }
