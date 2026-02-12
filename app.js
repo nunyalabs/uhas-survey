@@ -221,12 +221,15 @@ function renderSelectQuestion(q, formId) {
 
   q.options.forEach((opt, i) => {
     const isOther = opt.toLowerCase().includes('other');
+    const onchangeAttr = isOther && !skipAutoOther 
+      ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', true)"`
+      : (hasOther && !skipAutoOther ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"` : '');
+    
     html += `
       <label class="tap-option" for="${formId}_${q.id}_${i}">
         <input type="radio" name="${q.id}" value="${opt}" 
                id="${formId}_${q.id}_${i}" ${required}
-               ${isOther && !skipAutoOther ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', true)"` :
-        (hasOther && !skipAutoOther ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"` : '')}>
+               ${onchangeAttr}>
         <span class="tap-btn">
           <i class="bi bi-circle tap-icon-unchecked"></i>
           <i class="bi bi-check-circle-fill tap-icon-checked"></i>

@@ -212,8 +212,8 @@ class DataExchange {
         headers.map(header => {
           const value = row[header];
           if (value === null || value === undefined) return '';
-          if (typeof value === 'string') return `"${value.replace(/"/g, '""')}"`;
-          if (typeof value === 'object') return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+          if (typeof value === 'string') return `"${value.replaceAll('"', '""')}"`;
+          if (typeof value === 'object') return `"${JSON.stringify(value).replaceAll('"', '""')}"`;
           return value;
         }).join(',')
       )
