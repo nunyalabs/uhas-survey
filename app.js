@@ -439,10 +439,31 @@ function saveCurrentStepAnswer() {
   let val = null;
   if (qItem.type === 'checkbox') {
     const checked = Array.from(container.querySelectorAll('input:checked')).map(cb => cb.value);
+
+    // Handle "Other" text for checkboxes
+    const otherInput = container.querySelector(`input[name="${qItem.id}_other"]`);
+    if (otherInput && otherInput.value.trim()) {
+      // Find if "Other" (or similar) is checked
+      const otherIndex = checked.findIndex(v => v.toLowerCase().includes('other'));
+      if (otherIndex !== -1) {
+        checked[otherIndex] = `Other: ${otherInput.value.trim()}`;
+      }
+    }
+
     if (checked.length > 0) val = checked;
   } else if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') {
     const checked = container.querySelector('input:checked');
-    if (checked) val = checked.value;
+    if (checked) {
+      val = checked.value;
+
+      // Handle "Other" text
+      if (val.toLowerCase().includes('other')) {
+        const otherInput = container.querySelector(`input[name="${qItem.id}_other"]`);
+        if (otherInput && otherInput.value.trim()) {
+          val = `Other: ${otherInput.value.trim()}`;
+        }
+      }
+    }
   } else {
     const input = container.querySelector('input');
     if (input) val = input.value;
@@ -458,15 +479,51 @@ function restoreWizardAnswer(qId) {
   if (!val) return;
 
   const container = document.getElementById('wizardStepContainer');
-  const qItem = wizardState.questions.find(q => q.id === qId);
 
   if (Array.isArray(val)) { // Checkbox
     val.forEach(v => {
-      const el = container.querySelector(`input[value="${v}"]`);
+      let valueToCheck = v;
+      let otherText = '';
+
+      if (v.startsWith('Other: ')) {
+        valueToCheck = 'Other'; // Assuming 'Other' is the value in options
+        otherText = v.substring(7);
+
+        // Try to find the exact "Other" option value from inputs if possible, 
+        // or just look for an input with value "Other"
+        const otherOpt = Array.from(container.querySelectorAll('input[type="checkbox"]'))
+          .find(i => i.value.toLowerCase().includes('other'));
+        if (otherOpt) valueToCheck = otherOpt.value;
+
+        const otherInput = container.querySelector(`input[name="${qId}_other"]`);
+        if (otherInput) {
+          otherInput.value = otherText;
+          otherInput.style.display = 'block';
+        }
+      }
+
+      const el = container.querySelector(`input[value="${valueToCheck}"]`);
       if (el) el.checked = true;
     });
   } else {
-    const radio = container.querySelector(`input[value="${val}"]`);
+    let valueToCheck = val;
+    let otherText = '';
+
+    if (typeof val === 'string' && val.startsWith('Other: ')) {
+      otherText = val.substring(7);
+      // Find the radio/option that contains "Other"
+      const otherOpt = Array.from(container.querySelectorAll('input[type="radio"]'))
+        .find(i => i.value.toLowerCase().includes('other'));
+      if (otherOpt) valueToCheck = otherOpt.value;
+
+      const otherInput = container.querySelector(`input[name="${qId}_other"]`);
+      if (otherInput) {
+        otherInput.value = otherText;
+        otherInput.style.display = 'block';
+      }
+    }
+
+    const radio = container.querySelector(`input[value="${valueToCheck}"]`);
     if (radio) {
       radio.checked = true;
     } else {
@@ -914,37 +971,48 @@ async function submitCurrentForm() {
   const form = document.getElementById(`${currentTab}Form`);
   if (!form) return;
 
-  // Get and validate study site
-  let studySite = getStudySiteValue();
-  studySite = validateAndResolveStudySite(studySite);
-  if (!studySite) return;
+  // COLLECT & VALIDATE (WIZARD MODE)
 
-  // Validate required fields
-  const invalidFields = form.querySelectorAll(':invalid');
-  if (invalidFields.length > 0) {
-    invalidFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    invalidFields[0].focus();
-    alert('Please fill in all required fields');
-    return;
-  }
+  // 1. Ensure current step is saved
+  saveCurrentStepAnswer();
 
-  // Ensure database is initialized
-  if (!db.db) {
-    console.log('⚠️ Database not initialized, initializing now...');
-    try {
-      await db.init();
-      console.log('✅ Database initialized');
-    } catch (initError) {
-      console.error('❌ Database initialization failed:', initError);
-      alert('❌ Failed to initialize database. Please refresh the page.');
+  // 2. Validate all questions against wizardState
+  for (let i = 0; i < wizardState.questions.length; i++) {
+    const q = wizardState.questions[i];
+    if (shouldHideQuestion(q)) continue; // Skip hidden logic
+
+    const val = wizardState.answers[q.id];
+    const isMissing = !val || (Array.isArray(val) && val.length === 0);
+
+    if (q.required && isMissing) {
+      console.warn(`Validation failed at question ${i}: ${q.label}`);
+      jumpToQuestion(i); // Auto-jump to missing question
+
+      // Small delay to allow render, then shake/alert
+      setTimeout(() => {
+        const container = document.getElementById('wizardStepContainer');
+        if (container) {
+          container.classList.add('shake');
+          setTimeout(() => container.classList.remove('shake'), 500);
+        }
+        alert(`⚠️ Please answer: ${q.label}`);
+      }, 100);
       return;
     }
   }
 
-  // Collect form data explicitly from WIZARD STATE
-  // Since inputs are removed from DOM, we rely on wizardState.answers
-  // We also need to do a final save of the current step
-  saveCurrentStepAnswer();
+  // 3. Extract special fields for DB
+  const data = { ...wizardState.answers };
+
+  // Study Site is just another field now, but we need it for the record header
+  // It should be in data['studySite'] if the question ID is 'studySite'
+  const studySite = data['studySite'] || 'UNKNOWN';
+
+  if (!studySite || studySite === 'UNKNOWN') {
+    // Just in case studySite logic is unique or missed
+    // Use the first question as fallback if IT is studySite
+    // But validation above should catch it.
+  }
 
   const data = { ...wizardState.answers };
 
