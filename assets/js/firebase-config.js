@@ -8,6 +8,10 @@ const firebaseConfig = {
   appId: "1:952946475862:web:70f90e3e7f96407c728cf7"
 };
 
+// Expose config for SyncService
+if (!window.CONFIG) window.CONFIG = {};
+window.CONFIG.firebase = firebaseConfig;
+
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 

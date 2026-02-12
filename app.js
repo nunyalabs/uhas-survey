@@ -15,6 +15,13 @@ let currentTab = 'dashboard';
 let currentView = 'list'; // 'list' or 'group'
 let selectedGroup = null;
 
+// Wizard State
+let wizardState = {
+  questions: [],
+  currentIndex: 0,
+  answers: {}
+};
+
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -119,40 +126,290 @@ function updateBottomBar() {
   document.getElementById('bottomBar').style.display = 'flex';
 }
 
-// ===== QUESTIONNAIRE RENDERING =====
+// ===== QUESTIONNAIRE RENDERING (WIZARD FLOW) =====
 function renderQuestionnaire(q) {
-  let html = `
-    <form id="${q.id}Form" novalidate>
-      <div class="section-header d-flex justify-content-between align-items-start">
-        <div>
-            <h5><i class="bi ${q.icon}"></i> ${q.title}</h5>
-            <small>Participant ID auto-generated on submit</small>
-        </div>
-        <div class="d-flex gap-1">
-             <!-- Export button moved to Data tab and Footer -->
-        </div>
-      </div>
-  `;
+  // 1. Flatten questions with section info
+  wizardState.questions = [];
+  wizardState.currentIndex = 0;
+  wizardState.answers = {}; // Reset answers
+
+  // Load draft if exists
+  const draft = localStorage.getItem(`survey_draft_${q.id}`);
+  if (draft) {
+    try {
+      const parsed = JSON.parse(draft);
+      // We'll populate fields as we render them, or pre-fill answers
+      // For simplicity in wizard, we might just rely on DOM elements retaining state if we hid them, 
+      // but since we re-render, we need to store them. 
+      // Actually, simplest is to keep a hidden form with ALL inputs, and the wizard just shows/hides them?
+      // No, let's render one by one/
+    } catch (e) { console.error('Error parsing draft', e); }
+  }
 
   q.sections.forEach(section => {
-    if (section.title) {
-      html += `
-        <div class="section-header mt-2">
-          <h6>${section.title}</h6>
-          ${section.description ? `<small>${section.description}</small>` : ''}
-        </div>
-      `;
-    }
-
     section.questions.forEach(question => {
-      html += renderQuestion(question, q.id);
+      wizardState.questions.push({
+        ...question,
+        sectionTitle: section.title,
+        sectionDesc: section.description
+      });
     });
   });
 
-  // ADD "Save & Share" button at the end of the form
-  html += `</form>`;
+  // Setup container
+  let html = `
+    <form id="${q.id}Form" novalidate class="wizard-form" style="height: 100%; display: flex; flex-direction: column;">
+      <div id="wizardHeader" class="wizard-header mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted" id="wizardProgress">Question 1 of ${wizardState.questions.length}</small>
+            <div class="progress" style="width: 50%; height: 6px;">
+                <div id="wizardProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+        <h5 class="mt-2" id="wizardSectionTitle"></h5>
+      </div>
+
+      <div id="wizardStepContainer" class="flex-grow-1 d-flex flex-column justify-content-center">
+        <!-- Question injected here -->
+      </div>
+
+      <div class="wizard-footer mt-auto pt-3 d-flex gap-2 justify-content-between">
+        <button type="button" class="btn btn-outline-secondary" id="btnPrev" onclick="wizardPrev()">
+          <i class="bi bi-arrow-left"></i> Previous
+        </button>
+        <button type="button" class="btn btn-primary" id="btnNext" onclick="wizardNext()">
+          Next <i class="bi bi-arrow-right"></i>
+        </button>
+        <button type="button" class="btn btn-success" id="btnSubmit" onclick="submitCurrentForm()" style="display: none;">
+          <i class="bi bi-check-lg"></i> Save & Finish
+        </button>
+      </div>
+    </form>
+  `;
+
+  // Defer initial render to after HTML injection
+  setTimeout(() => renderWizardStep(), 0);
+
   return html;
 }
+
+function renderWizardStep() {
+  const container = document.getElementById('wizardStepContainer');
+  if (!container) return;
+
+  // Find next visible question (handling showIf)
+  // We don't skip here, we assume currentIndex is valid or we moved to it. 
+  // Should we check validity of current index?
+
+  const qItem = wizardState.questions[wizardState.currentIndex];
+  if (!qItem) {
+    // End of wizard?
+    return;
+  }
+
+  // Check showIf logic. If hidden, auto-move.
+  // NOTE: This recursive check needs to handle direction. 
+  // For now, let's render, then check visibility. If hidden, trigger Next immediately?
+  // Better: loop until we find a visible one.
+
+  // We'll trust the navigation logic to settle on a visible index.
+  // But for initial render, we might be on a hidden one.
+  if (shouldHideQuestion(qItem)) {
+    // Auto move next without animation
+    wizardState.currentIndex++;
+    if (wizardState.currentIndex >= wizardState.questions.length) {
+      // Reached end? Show submit?
+      updateWizardControls();
+      return;
+    }
+    renderWizardStep();
+    return;
+  }
+
+  // Update Header
+  document.getElementById('wizardSectionTitle').textContent = qItem.sectionTitle || '';
+  document.getElementById('wizardProgress').textContent = `Question ${wizardState.currentIndex + 1} of ${wizardState.questions.length}`;
+  const pct = ((wizardState.currentIndex + 1) / wizardState.questions.length) * 100;
+  document.getElementById('wizardProgressBar').style.width = `${pct}%`;
+
+  // Render Question
+  let qHtml = renderQuestion(qItem, currentTab + 'Form'); // Reuse existing render
+
+  // Wrap in a fade-in div
+  container.innerHTML = `<div class="wizard-step fade-in-up">${qHtml}</div>`;
+
+  // Restore answer if exists in state or draft
+  restoreWizardAnswer(qItem.id);
+
+  // Attach auto-advance listeners for radios
+  if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') {
+    const inputs = container.querySelectorAll('input[type="radio"], input[type="radio"]'); // Selects are rendered as radios in this app helper
+    inputs.forEach(input => {
+      input.addEventListener('change', () => {
+        // Delay slightly for visual feedback
+        setTimeout(() => wizardNext(), 400);
+      });
+    });
+  }
+
+  updateWizardControls();
+}
+
+function updateWizardControls() {
+  const isFirst = wizardState.currentIndex === 0;
+  const isLast = wizardState.currentIndex === wizardState.questions.length - 1; // Or check if remaining are all hidden
+
+  const btnPrev = document.getElementById('btnPrev');
+  const btnNext = document.getElementById('btnNext');
+  const btnSubmit = document.getElementById('btnSubmit');
+
+  if (btnPrev) btnPrev.style.visibility = isFirst ? 'hidden' : 'visible';
+
+  // Check if we are at the "effective" end (next questions are hidden)
+  // For simplicity, just check last index.
+
+  if (isLast) {
+    if (btnNext) btnNext.style.display = 'none';
+    if (btnSubmit) btnSubmit.style.display = 'flex';
+  } else {
+    if (btnNext) btnNext.style.display = 'flex';
+    if (btnSubmit) btnSubmit.style.display = 'none';
+  }
+}
+
+function shouldHideQuestion(q) {
+  if (!q.showIf) return false;
+
+  // Check dependency value
+  // We need to look up the answer in wizardState.answers or the DOM if it's still there (it's not).
+  // So we MUST store answers in wizardState.answers on change.
+
+  const depValue = wizardState.answers[q.showIf.field];
+  return depValue !== q.showIf.value;
+}
+
+function wizardNext() {
+  if (!validateCurrentStep()) return;
+  saveCurrentStepAnswer();
+
+  let nextIndex = wizardState.currentIndex + 1;
+
+  // Skip hidden questions
+  while (nextIndex < wizardState.questions.length) {
+    if (!shouldHideQuestion(wizardState.questions[nextIndex])) {
+      break;
+    }
+    nextIndex++;
+  }
+
+  if (nextIndex < wizardState.questions.length) {
+    wizardState.currentIndex = nextIndex;
+    renderWizardStep();
+  } else {
+    // End of form
+    updateWizardControls();
+    // Maybe render a "Review" or "Finished" step?
+    // For now, just ensure Submit button is visible
+    wizardState.currentIndex = wizardState.questions.length - 1; // Stay on last
+    updateWizardControls();
+  }
+}
+
+function wizardPrev() {
+  saveCurrentStepAnswer(); // Optional: save before moving back
+
+  let prevIndex = wizardState.currentIndex - 1;
+
+  // Skip hidden questions backwards
+  while (prevIndex >= 0) {
+    if (!shouldHideQuestion(wizardState.questions[prevIndex])) {
+      break;
+    }
+    prevIndex--;
+  }
+
+  if (prevIndex >= 0) {
+    wizardState.currentIndex = prevIndex;
+    renderWizardStep();
+  }
+}
+
+function validateCurrentStep() {
+  // Check required
+  const container = document.getElementById('wizardStepContainer');
+  const qItem = wizardState.questions[wizardState.currentIndex];
+
+  if (qItem.required) {
+    // Check if answered
+    const input = container.querySelector('input:checked, input[type="text"], input[type="date"], select');
+    // Note: this is a rough check. 
+
+    let hasValue = false;
+    if (qItem.type === 'checkbox') {
+      hasValue = container.querySelectorAll('input:checked').length > 0;
+    } else if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') { // Select rendered as radios
+      hasValue = container.querySelectorAll('input:checked').length > 0;
+    } else {
+      const val = container.querySelector('input')?.value;
+      hasValue = val && val.trim() !== '';
+    }
+
+    if (!hasValue) {
+      // alert('Please answer this question.'); 
+      // Better: shake animation or inline error
+      container.classList.add('shake');
+      setTimeout(() => container.classList.remove('shake'), 500);
+      return false;
+    }
+  }
+  return true;
+}
+
+function saveCurrentStepAnswer() {
+  const container = document.getElementById('wizardStepContainer');
+  const qItem = wizardState.questions[wizardState.currentIndex];
+
+  // Extract value
+  let val = null;
+  if (qItem.type === 'checkbox') {
+    const checked = Array.from(container.querySelectorAll('input:checked')).map(cb => cb.value);
+    if (checked.length > 0) val = checked;
+  } else if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') {
+    const checked = container.querySelector('input:checked');
+    if (checked) val = checked.value;
+  } else {
+    const input = container.querySelector('input');
+    if (input) val = input.value;
+  }
+
+  if (val !== null) {
+    wizardState.answers[qItem.id] = val;
+  }
+}
+
+function restoreWizardAnswer(qId) {
+  const val = wizardState.answers[qId];
+  if (!val) return;
+
+  const container = document.getElementById('wizardStepContainer');
+  const qItem = wizardState.questions.find(q => q.id === qId);
+
+  if (Array.isArray(val)) { // Checkbox
+    val.forEach(v => {
+      const el = container.querySelector(`input[value="${v}"]`);
+      if (el) el.checked = true;
+    });
+  } else {
+    const radio = container.querySelector(`input[value="${val}"]`);
+    if (radio) {
+      radio.checked = true;
+    } else {
+      const text = container.querySelector(`input[name="${qId}"]`);
+      if (text) text.value = val;
+    }
+  }
+}
+
 
 function renderQuestion(q, formId) {
   const showIfAttr = q.showIf ?
@@ -618,8 +875,14 @@ async function submitCurrentForm() {
     }
   }
 
-  // Collect form data
-  const data = collectFormData(form);
+  // Collect form data explicitly from WIZARD STATE
+  // Since inputs are removed from DOM, we rely on wizardState.answers
+  // We also need to do a final save of the current step
+  saveCurrentStepAnswer();
+
+  const data = { ...wizardState.answers };
+
+  // Explicitly ensure studySite is there
   data.studySite = studySite;
 
   // Map survey type to participant type
@@ -650,26 +913,58 @@ async function submitCurrentForm() {
 
     console.log('✅ Survey saved to local storage (IndexedDB):', record);
 
-    // Clear draft
+    // Clear draft and reset state
     localStorage.removeItem(`survey_draft_${currentTab}`);
+    wizardState.answers = {};
+    wizardState.currentIndex = 0;
 
-    // Show success modal
-    showSuccessModal(participantId, studySite.toUpperCase(), record);
-    form.reset();
+    // Show success modal with initial status
+    const statusText = `
+        <span id="syncStatus">⏳ Saving locally...</span><br>
+        <span id="downloadStatus">⏳ Preparing download...</span>
+    `;
+    showSuccessModal(participantId, studySite.toUpperCase(), record, statusText);
+
+    // Reset wizard
+    renderCurrentTab();
 
     // Auto-sync to Firebase
     if (window.syncService && navigator.onLine) {
+      document.getElementById('syncStatus').innerHTML = '🔄 Syncing to cloud...';
+
       syncService.syncSurvey(record).then(() => {
-        alert('✅ Data saved locally and synced to cloud!');
+        console.log('✅ Auto-synced');
+        const el = document.getElementById('syncStatus');
+        if (el) el.innerHTML = '✅ Data sync successful';
       }).catch(err => {
         console.warn('Sync failed:', err);
-        // We don't alert error here to avoid alarming user if local save was good
+        const el = document.getElementById('syncStatus');
+        if (el) el.innerHTML = '⚠️ Sync failed (saved locally)';
       });
+    } else {
+      const el = document.getElementById('syncStatus');
+      if (el) el.innerHTML = '📂 Saved locally (Offline)';
     }
+
+    // AUTO DOWNLOAD JSON
+    setTimeout(async () => {
+      try {
+        const fileName = _buildFileName(record);
+        const jsonStr = JSON.stringify(record, null, 2);
+        await DataExchange._downloadFile(jsonStr, fileName, 'application/json');
+
+        const el = document.getElementById('downloadStatus');
+        if (el) el.innerHTML = `✅ File downloaded: ${fileName}`;
+      } catch (e) {
+        console.error('Auto-download failed', e);
+        const el = document.getElementById('downloadStatus');
+        if (el) el.innerHTML = '⚠️ Auto-download failed';
+      }
+    }, 1000);
 
   } catch (error) {
     console.error('❌ Submit failed:', error);
-    alert(`❌ Failed to save response: ${error.message}\n\nPlease try again or contact support if the problem persists.`);
+    alert(`❌ Failed to save response: ${error.message}`);
   }
 }
 
@@ -878,17 +1173,19 @@ function attachConditionalLogic() {
 }
 
 // ===== SUCCESS MODAL =====
-function showSuccessModal(participantId, studySite, record) {
+function showSuccessModal(participantId, studySite, record, customStatusHtml) {
   const modal = document.getElementById('successModal');
   const text = document.getElementById('successModalText');
   const shareBtn = document.getElementById('successShareBtn');
 
   if (!modal || !text || !shareBtn) return;
 
+  const statusContent = customStatusHtml || 'Data saved locally.';
+
   text.innerHTML = `
     <strong>Participant ID:</strong> ${participantId}<br>
     <strong>Site:</strong> ${studySite}<br><br>
-    Data saved locally.
+    ${statusContent}
   `;
 
   // Attach share handler
