@@ -1,11 +1,11 @@
 // Firebase configuration for UHAS Study
 const firebaseConfig = {
-  apiKey: "REDACTED_API_KEY", // Placeholder
-  authDomain: "health-45db2.firebaseapp.com",
-  projectId: "health-45db2",
-  storageBucket: "health-45db2.appspot.com",
-  messagingSenderId: "952946475862", // Placeholder
-  appId: "1:952946475862:web:70f90e3e7f96407c728cf7" // Placeholder
+  apiKey: "REDACTED_API_KEY",
+  authDomain: "uhas-study.firebaseapp.com",
+  projectId: "uhas-study",
+  storageBucket: "uhas-study.firebasestorage.app",
+  messagingSenderId: "952946475862",
+  appId: "1:952946475862:web:70f90e3e7f96407c728cf7"
 };
 
 // Initialize Firebase

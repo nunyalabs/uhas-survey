@@ -16,15 +16,6 @@ class Dashboard {
 
       let html = `
         <div class="dashboard-container">
-          <!-- WhatsApp Notification -->
-          <div style="background: #25D366; color: white; padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); display: flex; align-items: center; gap: var(--space-md);">
-            <i class="bi bi-whatsapp" style="font-size: 1.5rem;"></i>
-            <div>
-              <strong>📱 Data Sharing</strong><br>
-              <small>All data is stored locally on your device. To share responses, export as JSON and send directly to my WhatsApp.</small>
-            </div>
-          </div>
-
           <div class="section-header">
             <h5>Questionnaires</h5>
             <small>Select a group to fill out a questionnaire</small>
@@ -54,13 +45,6 @@ class Dashboard {
       }
 
       html += `
-          </div>
-
-          <!-- View Records Button -->
-          <div style="margin-top: var(--space-lg); text-align: center;">
-            <button class="btn btn-outline" onclick="showRecords()" style="width:100%; padding: var(--space-md); font-size: 1rem;">
-              <i class="bi bi-list-ul"></i> View All Records (${surveys.length})
-            </button>
           </div>
         </div>
       `;
@@ -180,75 +164,3 @@ class Dashboard {
 globalThis.Dashboard = Dashboard;
 
 console.log('✅ dashboard.js: globalThis.Dashboard assigned', globalThis.Dashboard);
-
-// ===== RECORDS PAGE =====
-class RecordsPage {
-  static async render() {
-    try {
-      if (!db.db) await db.init();
-      const surveys = await db.getAll('surveys');
-      const sorted = surveys.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      let html = `
-        <div>
-          <div class="section-header d-flex align-items-center gap-2" style="margin-bottom: var(--space-md);">
-            <button class="btn btn-sm" onclick="showDashboard()" style="background:#fff; color:var(--text); border:1px solid var(--border);">
-              <i class="bi bi-arrow-left"></i> Back
-            </button>
-            <div>
-              <h5><i class="bi bi-list-ul"></i> Records</h5>
-              <small>${sorted.length} response${sorted.length === 1 ? '' : 's'}</small>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div style="display:flex; gap: var(--space-sm); margin-bottom: var(--space-md); flex-wrap: wrap;">
-            <button class="btn btn-outline" onclick="shareAllRecords()" style="flex:1;">
-              <i class="bi bi-share"></i> Share All
-            </button>
-            <button class="btn btn-outline" onclick="exportAllRecords()" style="flex:1;">
-              <i class="bi bi-download"></i> Export All
-            </button>
-          </div>
-
-          <!-- Line List -->
-          <div class="responses-list">
-      `;
-
-      if (sorted.length === 0) {
-        html += '<p style="text-align: center; padding: var(--space-md); color: var(--color-text-muted);">No responses yet</p>';
-      } else {
-        for (const survey of sorted) {
-          const date = new Date(survey.createdAt).toLocaleDateString();
-          const time = new Date(survey.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-          const group = CONFIG.participantGroups.find(g => g.type === survey.type);
-          html += `
-            <div class="response-item" style="cursor:pointer;">
-              <div style="display: flex; align-items: center; gap: 0.5rem; flex:1;" onclick="shareOneRecord('${survey.id}')">
-                <i class="bi ${group?.icon || 'bi-file-text'}" style="color: ${group?.color || '#666'}; font-size: 1.25rem;"></i>
-                <div>
-                  <div style="font-weight: 500;">${survey.participantId || 'N/A'}</div>
-                  <div style="font-size: 0.8rem; color: var(--color-text-muted);">${group?.label || survey.type} • ${survey.studySite || ''} • ${date} ${time}</div>
-                </div>
-              </div>
-              <button class="btn btn-sm btn-outline" onclick="shareOneRecord('${survey.id}')" title="Share this record" style="border:none;">
-                <i class="bi bi-share" style="font-size:1.1rem;"></i>
-              </button>
-            </div>
-          `;
-        }
-      }
-
-      html += `
-          </div>
-        </div>
-      `;
-      return html;
-    } catch (error) {
-      console.error('❌ Records render failed:', error);
-      return `<div class="card"><p>❌ Failed to load records</p></div>`;
-    }
-  }
-}
-
-globalThis.RecordsPage = RecordsPage;
