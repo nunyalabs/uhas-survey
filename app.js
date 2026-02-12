@@ -222,13 +222,13 @@ function renderSelectQuestion(q, formId) {
   q.options.forEach((opt, i) => {
     const isOther = opt.toLowerCase().includes('other');
     let onchangeAttr = '';
-    
+
     if (isOther && !skipAutoOther) {
       onchangeAttr = `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', true)"`;
     } else if (hasOther && !skipAutoOther) {
       onchangeAttr = `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"`;
     }
-    
+
     html += `
       <label class="tap-option" for="${formId}_${q.id}_${i}">
         <input type="radio" name="${q.id}" value="${opt}" 
@@ -270,7 +270,7 @@ function renderRadioQuestion(q, formId) {
     } else if (hasOther) {
       onchangeAttr = `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"`;
     }
-    
+
     html += `
       <label class="tap-option" for="${formId}_${q.id}_${i}">
         <input type="radio" name="${q.id}" value="${opt}" 
@@ -496,7 +496,7 @@ function clearCurrentForm() {
     alert('⚠️ Select a questionnaire to clear form');
     return;
   }
-  
+
   const form = document.getElementById(`${currentTab}Form`);
   if (form && confirm('Clear all entries in this form?')) {
     form.reset();
@@ -671,6 +671,17 @@ async function submitCurrentForm() {
     // Show success modal
     showSuccessModal(participantId, studySite.toUpperCase(), record);
     form.reset();
+
+    // Auto-sync to Firebase
+    if (window.syncService && navigator.onLine) {
+      syncService.syncSurvey(record).then(() => {
+        alert('✅ Data saved locally and synced to cloud!');
+      }).catch(err => {
+        console.warn('Sync failed:', err);
+        // We don't alert error here to avoid alarming user if local save was good
+      });
+    }
+
   } catch (error) {
     console.error('❌ Submit failed:', error);
     alert(`❌ Failed to save response: ${error.message}\n\nPlease try again or contact support if the problem persists.`);
@@ -703,7 +714,7 @@ async function showDashboard() {
   currentTab = 'dashboard';
   currentView = 'list';
   selectedGroup = null;
-  
+
   await renderCurrentTab();
 }
 
@@ -712,14 +723,14 @@ async function showRecords() {
   currentView = 'list';
   selectedGroup = null;
   await renderCurrentTab();
-  window.scrollTo({top: 0, behavior: 'smooth'});
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function openQuestionnaire(questionnaireId) {
   currentTab = questionnaireId;
   currentView = 'list';
   selectedGroup = null;
-  
+
   renderCurrentTab();
 }
 
@@ -854,7 +865,7 @@ function _toggleChildInputRequired(child, shouldShow, el) {
 }
 
 function _handleConditionalFieldChange(el, fieldName, expectedValue) {
-  return function() {
+  return function () {
     let currentValue;
     if (this.type === 'select-one') {
       currentValue = this.value;
@@ -906,7 +917,7 @@ function showSuccessModal(participantId, studySite, record) {
   // Attach share handler
   // Use record.id if it's an object, otherwise treat as ID
   const id = (typeof record === 'object' && record !== null) ? record.id : record;
-  
+
   shareBtn.onclick = async () => {
     // Attempt share
     await shareOneRecord(id);
@@ -919,7 +930,7 @@ function showSuccessModal(participantId, studySite, record) {
 function closeSuccessModal() {
   const modal = document.getElementById('successModal');
   if (modal) modal.style.display = 'none';
-  window.scrollTo({top: 0, behavior: 'smooth'});
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ===== SAVE & SHARE =====
@@ -993,9 +1004,57 @@ async function submitAndShareCurrentForm() {
     form.reset();
 
     showSuccessModal(participantId, studySite.toUpperCase(), savedRecord);
+
+    // Auto-sync to Firebase
+    if (window.syncService && navigator.onLine) {
+      syncService.syncSurvey(savedRecord).then(() => {
+        // alert('✅ Data synced to cloud!'); // Optional: separate alert or just toast
+        console.log('✅ Auto-synced to cloud');
+      }).catch(err => console.warn('Sync failed:', err));
+    }
+
   } catch (error) {
     console.error('❌ Save to DB failed:', error);
     alert(`❌ Data sharing initiated, but LOCAL SAVE FAILED: ${error.message}. Please take a screenshot of the filled form.`);
+  }
+}
+
+async function syncAllToCloud() {
+  if (!window.syncService) {
+    alert('Sync service not loaded');
+    return;
+  }
+
+  if (!navigator.onLine) {
+    alert('⚠️ You are offline. Connect to the internet to sync.');
+    return;
+  }
+
+  const btn = document.querySelector('button[onclick="syncAllToCloud()"]');
+  const originalText = btn ? btn.innerHTML : '';
+  if (btn) btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Syncing...';
+
+  try {
+    const result = await syncService.syncAll();
+    console.log('Sync result:', result);
+
+    if (result.totalSynced > 0) {
+      alert(`✅ Successfully synced ${result.totalSynced} items to the cloud!`);
+    } else if (result.totalFailed > 0) {
+      alert(`⚠️ Sync completed with errors. Failed: ${result.totalFailed}. Check console for details.`);
+    } else {
+      alert('All data is already up to date.');
+    }
+
+    // Refresh table if on data view
+    if (typeof loadDataTable === 'function') {
+      loadDataTable();
+    }
+  } catch (error) {
+    console.error('Sync error:', error);
+    alert('❌ Sync failed: ' + error.message);
+  } finally {
+    if (btn) btn.innerHTML = originalText;
   }
 }
 
