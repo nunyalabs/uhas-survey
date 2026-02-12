@@ -445,6 +445,10 @@ function validateCurrentStep() {
 
 function saveCurrentStepAnswer() {
   const container = document.getElementById('wizardStepContainer');
+  // Guard against out-of-bounds index (e.g. on Review step)
+  if (!wizardState.questions || !wizardState.questions[wizardState.currentIndex]) {
+    return;
+  }
   const qItem = wizardState.questions[wizardState.currentIndex];
 
   // Extract value
