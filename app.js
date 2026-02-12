@@ -243,11 +243,15 @@ function renderWizardStep() {
 
   // Attach auto-advance listeners for radios
   if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') {
-    const inputs = container.querySelectorAll('input[type="radio"], input[type="radio"]'); // Selects are rendered as radios in this app helper
+    const inputs = container.querySelectorAll('input[type="radio"]');
     inputs.forEach(input => {
       input.addEventListener('change', () => {
+        console.log('🔘 Radio changed:', input.value);
         // Delay slightly for visual feedback
-        setTimeout(() => wizardNext(), 400);
+        setTimeout(() => {
+          console.log('⏰ Triggering wizardNext from radio change');
+          wizardNext();
+        }, 400);
       });
     });
   }
@@ -283,12 +287,19 @@ function shouldHideQuestion(q) {
   // So we MUST store answers in wizardState.answers on change.
 
   const depValue = wizardState.answers[q.showIf.field];
-  return depValue !== q.showIf.value;
+  const shouldHide = depValue !== q.showIf.value;
+  // console.log(`🙈 shouldHideQuestion ${q.id}: dep=${q.showIf.field} val=${depValue} req=${q.showIf.value} => ${shouldHide}`);
+  return shouldHide;
 }
 
 function wizardNext() {
-  if (!validateCurrentStep()) return;
+  console.log('➡️ wizardNext called');
+  if (!validateCurrentStep()) {
+    console.warn('❌ User validation failed');
+    return;
+  }
   saveCurrentStepAnswer();
+  console.log('💾 Step saved. Current State:', wizardState.answers);
 
   let nextIndex = wizardState.currentIndex + 1;
 
@@ -297,6 +308,7 @@ function wizardNext() {
     if (!shouldHideQuestion(wizardState.questions[nextIndex])) {
       break;
     }
+    console.log(`⏩ Skipping hidden question: ${wizardState.questions[nextIndex].id}`);
     nextIndex++;
   }
 
@@ -1002,11 +1014,11 @@ async function submitCurrentForm() {
   }
 
   // 3. Extract special fields for DB
-  const data = { ...wizardState.answers };
+  const surveyData = { ...wizardState.answers };
 
   // Study Site is just another field now, but we need it for the record header
-  // It should be in data['studySite'] if the question ID is 'studySite'
-  const studySite = data['studySite'] || 'UNKNOWN';
+  // It should be in surveyData['studySite'] if the question ID is 'studySite'
+  const studySite = surveyData['studySite'] || 'UNKNOWN';
 
   if (!studySite || studySite === 'UNKNOWN') {
     // Just in case studySite logic is unique or missed
@@ -1014,10 +1026,8 @@ async function submitCurrentForm() {
     // But validation above should catch it.
   }
 
-  const data = { ...wizardState.answers };
-
   // Explicitly ensure studySite is there
-  data.studySite = studySite;
+  surveyData.studySite = studySite;
 
   // Map survey type to participant type
   const typeMap = {
@@ -1042,7 +1052,7 @@ async function submitCurrentForm() {
       type: currentTab,
       participantId: participantId,
       studySite: studySite,
-      data: data
+      data: surveyData
     });
 
     console.log('✅ Survey saved to local storage (IndexedDB):', record);
