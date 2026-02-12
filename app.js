@@ -920,3 +920,82 @@ function closeSuccessModal() {
   if (modal) modal.style.display = 'none';
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
+
+// ===== SAVE & SHARE =====
+async function submitAndShareCurrentForm() {
+  const questionnaire = QUESTIONNAIRES[currentTab];
+  if (!questionnaire || questionnaire.isDataView) return;
+
+  const form = document.getElementById(`${currentTab}Form`);
+  if (!form) return;
+
+  let studySite = getStudySiteValue();
+  studySite = validateAndResolveStudySite(studySite);
+  if (!studySite) return;
+
+  const invalidFields = form.querySelectorAll(':invalid');
+  if (invalidFields.length > 0) {
+    invalidFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    invalidFields[0].focus();
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  const data = collectFormData(form);
+  data.studySite = studySite;
+
+  const typeMap = {
+    patients: 'patient',
+    clinicians: 'clinician',
+    herbalists: 'herbalist',
+    caregivers: 'caregiver',
+    policymakers: 'policymaker',
+    researchers: 'researcher'
+  };
+
+  const participantType = typeMap[currentTab] || 'researcher';
+  const participantId = participantManager.generateId(participantType);
+
+  const record = {
+    type: currentTab,
+    participantId,
+    studySite,
+    data,
+    createdAt: new Date().toISOString(),
+    synced: false
+  };
+
+  try {
+    const jsonStr = JSON.stringify(record, null, 2);
+    const fileName = _buildFileName(record);
+    const blob = new Blob([jsonStr], { type: 'text/plain' });
+    const file = new File([blob], fileName, { type: 'text/plain' });
+
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: fileName, files: [file] });
+    } else {
+      DataExchange._downloadFile(jsonStr, fileName, 'application/json');
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Share failed:', error);
+      alert('❌ Share failed: ' + error.message);
+    }
+  }
+
+  try {
+    if (!db.db) await db.init();
+    const savedRecord = await db.add('surveys', record);
+    console.log('✅ Survey saved to local storage (IndexedDB):', savedRecord);
+
+    localStorage.removeItem(`survey_draft_${currentTab}`);
+    form.reset();
+
+    showSuccessModal(participantId, studySite.toUpperCase(), savedRecord);
+  } catch (error) {
+    console.error('❌ Save to DB failed:', error);
+    alert(`❌ Data sharing initiated, but LOCAL SAVE FAILED: ${error.message}. Please take a screenshot of the filled form.`);
+  }
+}
+
+globalThis.submitAndShareCurrentForm = submitAndShareCurrentForm;
