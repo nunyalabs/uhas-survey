@@ -45,12 +45,10 @@
 #### 5. **Import/Export Functionality**
    - **JSON Export**: Full data backup with metadata
    - **JSON Import**: Restore from backup
-   - **CSV Export**: For spreadsheet analysis
-   - **CSV Import**: Add data from external sources
    
-   - Both accessible via:
-     - Bottom bar "Import" button (file picker)
-     - Bottom bar "Export" button (select format)
+   - Accessible via:
+     - Bottom bar "Export" buttons
+     - Dashboard "Share" functionality
 
 #### 6. **Offline Status Indicator**
    - Real-time online/offline status in header
@@ -90,7 +88,7 @@ survey/
 - Real-time connection detection
 
 #### **exchange.js**
-- JSON/CSV import and export
+- JSON import and export
 - Structured data serialization
 - Error handling for invalid files
 

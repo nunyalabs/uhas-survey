@@ -22,7 +22,7 @@ class Dashboard {
             <i class="bi bi-whatsapp" style="font-size: 1.5rem;"></i>
             <div>
               <strong>📱 Data Sharing</strong><br>
-              <small>All data is stored locally on your device. To share responses, export as JSON/CSV and send directly to my WhatsApp.</small>
+              <small>All data is stored locally on your device. To share responses, export as JSON and send directly to my WhatsApp.</small>
             </div>
           </div>
 

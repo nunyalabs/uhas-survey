@@ -630,8 +630,8 @@ async function submitCurrentForm() {
     // Clear draft
     localStorage.removeItem(`survey_draft_${currentTab}`);
 
-    // Show success message with WhatsApp reminder
-    alert(`✅ Saved successfully!\n\nParticipant ID: ${participantId}\nStudy Site: ${studySite.toUpperCase()}\n\nData saved locally on your device.\n\n📱 Remember: Export your responses as JSON/CSV and send directly via WhatsApp to share with researchers.`);
+    // Show success modal
+    showSuccessModal(participantId, studySite.toUpperCase(), record);
     form.reset();
   } catch (error) {
     console.error('❌ Submit failed:', error);
@@ -651,17 +651,9 @@ function setupScrollToTop() {
 // ===== EXPORT =====
 async function exportData() {
   try {
-    const format = prompt('Export format? Enter "json" or "csv":', 'json').toLowerCase();
-
-    if (format === 'json') {
-      await DataExchange.exportJSON();
-      alert('✅ JSON export complete\n\n📱 Next: Send this file to the researchers via WhatsApp');
-    } else if (format === 'csv') {
-      await DataExchange.exportCSV();
-      alert('✅ CSV export complete\n\n📱 Next: Send this file to the researchers via WhatsApp');
-    } else {
-      alert('❌ Invalid format. Use "json" or "csv".');
-    }
+    // Default to JSON export
+    await DataExchange.exportJSON();
+    alert('✅ JSON export complete\n\n📱 Next: Send this file to the researchers via WhatsApp');
   } catch (error) {
     console.error('❌ Export failed:', error);
     alert(`❌ Export failed: ${error.message}`);
@@ -734,8 +726,9 @@ async function shareOneRecord(id) {
 
     const jsonStr = JSON.stringify(survey, null, 2);
     const fileName = _buildFileName(survey);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const file = new File([blob], fileName, { type: 'application/json' });
+    // Use text/plain for Android compatibility as many apps filter out application/json
+    const blob = new Blob([jsonStr], { type: 'text/plain' });
+    const file = new File([blob], fileName, { type: 'text/plain' });
 
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ title: fileName, files: [file] });
@@ -758,8 +751,9 @@ async function shareAllRecords() {
 
     const files = surveys.map(s => {
       const jsonStr = JSON.stringify(s, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      return new File([blob], _buildFileName(s), { type: 'application/json' });
+      // Use text/plain for Android compatibility
+      const blob = new Blob([jsonStr], { type: 'text/plain' });
+      return new File([blob], _buildFileName(s), { type: 'text/plain' });
     });
 
     if (navigator.canShare?.({ files })) {
@@ -847,4 +841,36 @@ function attachConditionalLogic() {
       });
     });
   });
+}
+
+// ===== SUCCESS MODAL =====
+function showSuccessModal(participantId, studySite, record) {
+  const modal = document.getElementById('successModal');
+  const text = document.getElementById('successModalText');
+  const shareBtn = document.getElementById('successShareBtn');
+
+  if (!modal || !text || !shareBtn) return;
+
+  text.innerHTML = `
+    <strong>Participant ID:</strong> ${participantId}<br>
+    <strong>Site:</strong> ${studySite}<br><br>
+    Data saved locally.
+  `;
+
+  // Attach share handler
+  // Use record.id if it's an object, otherwise treat as ID
+  const id = (typeof record === 'object' && record !== null) ? record.id : record;
+  
+  shareBtn.onclick = async () => {
+    // Attempt share
+    await shareOneRecord(id);
+  };
+
+  modal.style.display = 'block';
+}
+
+function closeSuccessModal() {
+  const modal = document.getElementById('successModal');
+  if (modal) modal.style.display = 'none';
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
