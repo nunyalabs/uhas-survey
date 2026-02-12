@@ -57,7 +57,7 @@ class ParticipantManager {
 
     // Get or initialize counter for this type
     const counterKey = `participant_counter_${type}`;
-    let counter = parseInt(localStorage.getItem(counterKey) || '0', 10);
+    let counter = Number.parseInt(localStorage.getItem(counterKey) || '0', 10);
     counter++;
     localStorage.setItem(counterKey, counter.toString());
 
@@ -78,7 +78,7 @@ class ParticipantManager {
     
     return {
       prefix,
-      number: parseInt(number, 10),
+      number: Number.parseInt(number, 10),
       type: type ? type[0] : null,
       label: type ? type[1].label : 'Unknown'
     };
@@ -130,8 +130,8 @@ class ParticipantManager {
     };
 
     // Save to database if available
-    if (window.db && window.db.db) {
-      await window.db.addParticipant(participant);
+    if (globalThis.db?.db) {
+      await globalThis.db.addParticipant(participant);
     }
 
     return participant;
@@ -141,8 +141,8 @@ class ParticipantManager {
    * Lookup participant by ID
    */
   async getParticipant(participantId) {
-    if (window.db && window.db.db) {
-      return window.db.getParticipant(participantId);
+    if (globalThis.db?.db) {
+      return globalThis.db.getParticipant(participantId);
     }
     return null;
   }
@@ -151,8 +151,8 @@ class ParticipantManager {
    * Get all participants by type
    */
   async getParticipantsByType(type) {
-    if (window.db && window.db.db) {
-      return window.db.getParticipantsByType(type);
+    if (globalThis.db?.db) {
+      return globalThis.db.getParticipantsByType(type);
     }
     return [];
   }
@@ -162,7 +162,7 @@ class ParticipantManager {
    */
   getCounter(type) {
     const counterKey = `participant_counter_${type}`;
-    return parseInt(localStorage.getItem(counterKey) || '0', 10);
+    return Number.parseInt(localStorage.getItem(counterKey) || '0', 10);
   }
 
   /**
@@ -178,7 +178,7 @@ class ParticipantManager {
 const participantManager = new ParticipantManager();
 
 // Make available globally
-window.participantManager = participantManager;
+globalThis.participantManager = participantManager;
 
-console.log('✅ participant.js: window.participantManager assigned', window.participantManager);
-window.PARTICIPANT_TYPES = PARTICIPANT_TYPES;
+console.log('✅ participant.js: window.participantManager assigned', globalThis.participantManager);
+globalThis.PARTICIPANT_TYPES = PARTICIPANT_TYPES;

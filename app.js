@@ -221,9 +221,13 @@ function renderSelectQuestion(q, formId) {
 
   q.options.forEach((opt, i) => {
     const isOther = opt.toLowerCase().includes('other');
-    const onchangeAttr = isOther && !skipAutoOther 
-      ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', true)"`
-      : (hasOther && !skipAutoOther ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"` : '');
+    let onchangeAttr = '';
+    
+    if (isOther && !skipAutoOther) {
+      onchangeAttr = `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', true)"`;
+    } else if (hasOther && !skipAutoOther) {
+      onchangeAttr = `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"`;
+    }
     
     html += `
       <label class="tap-option" for="${formId}_${q.id}_${i}">
@@ -260,12 +264,18 @@ function renderRadioQuestion(q, formId) {
 
   q.options.forEach((opt, i) => {
     const isOther = opt.toLowerCase().includes('other');
+    let onchangeAttr = '';
+    if (isOther) {
+      onchangeAttr = `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', true)"`;
+    } else if (hasOther) {
+      onchangeAttr = `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"`;
+    }
+    
     html += `
       <label class="tap-option" for="${formId}_${q.id}_${i}">
         <input type="radio" name="${q.id}" value="${opt}" 
                id="${formId}_${q.id}_${i}" ${required}
-               ${isOther ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', true)"` :
-        (hasOther ? `onchange="toggleOtherInput(this, '${formId}_${q.id}_other', false)"` : '')}>
+               ${onchangeAttr}>
         <span class="tap-btn">
           <i class="bi bi-circle tap-icon-unchecked"></i>
           <i class="bi bi-check-circle-fill tap-icon-checked"></i>
@@ -461,7 +471,7 @@ async function loadDataTable() {
         <td>${resp.participantId}</td>
         <td>${syncBadge}</td>
         <td>
-          <button class="btn btn-sm btn-outline" onclick='viewResponse(${JSON.stringify(resp).replaceAll(/'/g, "&apos;")})'>
+          <button class="btn btn-sm btn-outline" onclick='viewResponse(${JSON.stringify(resp).replaceAll(/'/, "&apos;")})'>
             <i class="bi bi-eye"></i>
           </button>
           <button class="btn btn-sm btn-danger" onclick="deleteResponse(${resp.id})">
@@ -530,19 +540,10 @@ function saveProgress() {
   alert('✅ Progress saved locally');
 }
 
-async function submitCurrentForm() {
-  const questionnaire = QUESTIONNAIRES[currentTab];
-  if (!questionnaire || questionnaire.isDataView) return;
-
-  const form = document.getElementById(`${currentTab}Form`);
-  if (!form) return;
-
-  // Check study site selection
-  // Try getting by ID first (for select/text inputs)
+function getStudySiteValue() {
   const studySiteEl = document.getElementById(`${currentTab}_studySite`);
   let studySite = studySiteEl?.value;
 
-  // If not found by ID (e.g. it's a radio group from renderSelectQuestion), try querySelector
   if (!studySite) {
     const checkedConfig = document.querySelector(`input[name="studySite"]:checked`);
     if (checkedConfig) {
@@ -550,9 +551,12 @@ async function submitCurrentForm() {
     }
   }
 
+  return studySite;
+}
+
+function validateAndResolveStudySite(studySite) {
   const studySiteOtherEl = document.getElementById(`${currentTab}_studySiteOther`);
 
-  // If "Other" is selected, check if the other field is filled
   if (studySite === 'Other') {
     const otherValue = studySiteOtherEl?.value?.trim();
     if (!otherValue) {
@@ -561,19 +565,51 @@ async function submitCurrentForm() {
         studySiteOtherEl.focus();
       }
       alert('Please specify the study site');
-      return;
+      return null;
     }
-    // Use the custom site name
-    studySite = otherValue;
-  } else if (!studySite) {
-    // If we can't focus a specific input, scroll to the top
+    return otherValue;
+  }
+
+  if (!studySite) {
     const firstOption = document.querySelector(`input[name="studySite"]`);
     if (firstOption) {
       firstOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     alert('Please select a Study Site');
-    return;
+    return null;
   }
+
+  return studySite;
+}
+
+function collectFormData(form) {
+  const formData = new FormData(form);
+  const data = {};
+  formData.forEach((value, key) => {
+    if (data[key]) {
+      if (Array.isArray(data[key])) {
+        data[key].push(value);
+      } else {
+        data[key] = [data[key], value];
+      }
+    } else {
+      data[key] = value;
+    }
+  });
+  return data;
+}
+
+async function submitCurrentForm() {
+  const questionnaire = QUESTIONNAIRES[currentTab];
+  if (!questionnaire || questionnaire.isDataView) return;
+
+  const form = document.getElementById(`${currentTab}Form`);
+  if (!form) return;
+
+  // Get and validate study site
+  let studySite = getStudySiteValue();
+  studySite = validateAndResolveStudySite(studySite);
+  if (!studySite) return;
 
   // Validate required fields
   const invalidFields = form.querySelectorAll(':invalid');
@@ -598,21 +634,7 @@ async function submitCurrentForm() {
   }
 
   // Collect form data
-  const formData = new FormData(form);
-  const data = {};
-  formData.forEach((value, key) => {
-    if (data[key]) {
-      if (Array.isArray(data[key])) {
-        data[key].push(value);
-      } else {
-        data[key] = [data[key], value];
-      }
-    } else {
-      data[key] = value;
-    }
-  });
-
-  // Add study site to data (use the resolved value)
+  const data = collectFormData(form);
   data.studySite = studySite;
 
   // Map survey type to participant type
@@ -820,6 +842,41 @@ function toggleOtherInput(el, otherId, show) {
   if (!show) otherInput.value = '';
 }
 
+function _toggleChildInputRequired(child, shouldShow, el) {
+  if (shouldShow) {
+    const label = el.querySelector('label');
+    if (label?.classList.contains('required')) {
+      child.setAttribute('required', 'true');
+    }
+  } else {
+    child.removeAttribute('required');
+  }
+}
+
+function _handleConditionalFieldChange(el, fieldName, expectedValue) {
+  return function() {
+    let currentValue;
+    if (this.type === 'select-one') {
+      currentValue = this.value;
+    } else {
+      currentValue = this.checked ? this.value : null;
+    }
+
+    if (this.type === 'radio') {
+      const checked = document.querySelector(`[name="${fieldName}"]:checked`);
+      currentValue = checked ? checked.value : null;
+    }
+
+    const shouldShow = (currentValue === expectedValue);
+    el.style.display = shouldShow ? 'block' : 'none';
+
+    const childInputs = el.querySelectorAll('input, select, textarea');
+    childInputs.forEach(child => {
+      _toggleChildInputRequired(child, shouldShow, el);
+    });
+  };
+}
+
 function attachConditionalLogic() {
   document.querySelectorAll('[data-show-if-field]').forEach(el => {
     const fieldName = el.dataset.showIfField;
@@ -827,34 +884,7 @@ function attachConditionalLogic() {
 
     const inputs = document.querySelectorAll(`[name="${fieldName}"]`);
     inputs.forEach(input => {
-      input.addEventListener('change', () => {
-        let currentValue = input.type === 'select-one' ? input.value :
-          (input.checked ? input.value : null);
-
-        if (input.type === 'radio') {
-          const checked = document.querySelector(`[name="${fieldName}"]:checked`);
-          currentValue = checked ? checked.value : null;
-        }
-
-        const shouldShow = (currentValue === expectedValue);
-        el.style.display = shouldShow ? 'block' : 'none';
-
-        // Toggle required attribute for inputs inside the conditional field
-        const childInputs = el.querySelectorAll('input, select, textarea');
-        childInputs.forEach(child => {
-          if (shouldShow) {
-            // Restore required if it was originally required
-            // We assume if it has the 'required' class or attribute it should be required
-            // For simplicity, we can check if the label has 'required' class
-            const label = el.querySelector('label');
-            if (label && label.classList.contains('required')) {
-              child.setAttribute('required', 'true');
-            }
-          } else {
-            child.removeAttribute('required');
-          }
-        });
-      });
+      input.addEventListener('change', _handleConditionalFieldChange(el, fieldName, expectedValue));
     });
   });
 }

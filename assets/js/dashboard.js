@@ -13,7 +13,6 @@ class Dashboard {
       }
 
       const surveys = await db.getAll('surveys');
-      // const stats = this._calculateStats(surveys);
 
       let html = `
         <div class="dashboard-container">
@@ -140,7 +139,7 @@ class Dashboard {
             </button>
             <div>
               <h5><i class="bi ${group.icon}" style="color: ${group.color};"></i> ${group.label}</h5>
-              <small>${surveys.length} response${surveys.length !== 1 ? 's' : ''}</small>
+              <small>${surveys.length} response${surveys.length === 1 ? '' : 's'}</small>
             </div>
           </div>
 
@@ -198,7 +197,7 @@ class RecordsPage {
             </button>
             <div>
               <h5><i class="bi bi-list-ul"></i> Records</h5>
-              <small>${sorted.length} response${sorted.length !== 1 ? 's' : ''}</small>
+              <small>${sorted.length} response${sorted.length === 1 ? '' : 's'}</small>
             </div>
           </div>
 
