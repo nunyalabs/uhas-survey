@@ -118,8 +118,8 @@ async function renderCurrentTab() {
 }
 
 function updateBottomBar() {
-  const isDashboard = currentTab === 'dashboard' || currentTab === 'records';
-  document.getElementById('bottomBar').style.display = isDashboard ? 'none' : 'flex';
+  const isRecords = currentTab === 'records';
+  document.getElementById('bottomBar').style.display = isRecords ? 'none' : 'flex';
 }
 
 // ===== QUESTIONNAIRE RENDERING =====
@@ -910,6 +910,7 @@ function showSuccessModal(participantId, studySite, record) {
   shareBtn.onclick = async () => {
     // Attempt share
     await shareOneRecord(id);
+    closeSuccessModal();
   };
 
   modal.style.display = 'block';
