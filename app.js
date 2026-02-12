@@ -257,7 +257,7 @@ function renderWizardStep() {
 
 function updateWizardControls() {
   const isFirst = wizardState.currentIndex === 0;
-  const isLast = wizardState.currentIndex === wizardState.questions.length - 1; // Or check if remaining are all hidden
+  const isReview = wizardState.currentIndex >= wizardState.questions.length;
 
   const btnPrev = document.getElementById('btnPrev');
   const btnNext = document.getElementById('btnNext');
@@ -265,12 +265,10 @@ function updateWizardControls() {
 
   if (btnPrev) btnPrev.style.visibility = isFirst ? 'hidden' : 'visible';
 
-  // Check if we are at the "effective" end (next questions are hidden)
-  // For simplicity, just check last index.
-
-  if (isLast) {
+  if (isReview) {
     if (btnNext) btnNext.style.display = 'none';
     if (btnSubmit) btnSubmit.style.display = 'flex';
+    if (btnPrev) btnPrev.onclick = () => wizardPrev(); // Ensure it goes back
   } else {
     if (btnNext) btnNext.style.display = 'flex';
     if (btnSubmit) btnSubmit.style.display = 'none';
@@ -306,17 +304,25 @@ function wizardNext() {
     wizardState.currentIndex = nextIndex;
     renderWizardStep();
   } else {
-    // End of form
-    updateWizardControls();
-    // Maybe render a "Review" or "Finished" step?
-    // For now, just ensure Submit button is visible
-    wizardState.currentIndex = wizardState.questions.length - 1; // Stay on last
-    updateWizardControls();
+    // End of form -> Show Review Screen
+    renderWizardReview();
   }
 }
 
 function wizardPrev() {
   saveCurrentStepAnswer(); // Optional: save before moving back
+
+  // If we are in review mode (index = length), go back to last visible question
+  if (wizardState.currentIndex >= wizardState.questions.length) {
+    let prevIndex = wizardState.questions.length - 1;
+    while (prevIndex >= 0) {
+      if (!shouldHideQuestion(wizardState.questions[prevIndex])) break;
+      prevIndex--;
+    }
+    wizardState.currentIndex = prevIndex;
+    renderWizardStep();
+    return;
+  }
 
   let prevIndex = wizardState.currentIndex - 1;
 
@@ -332,6 +338,66 @@ function wizardPrev() {
     wizardState.currentIndex = prevIndex;
     renderWizardStep();
   }
+}
+
+function jumpToQuestion(index) {
+  wizardState.currentIndex = index;
+  renderWizardStep();
+}
+
+function renderWizardReview() {
+  // Set index to length to indicate review mode
+  wizardState.currentIndex = wizardState.questions.length;
+
+  const container = document.getElementById('wizardStepContainer');
+  document.getElementById('wizardSectionTitle').textContent = 'Review Answers';
+  document.getElementById('wizardProgress').textContent = 'Review';
+  document.getElementById('wizardProgressBar').style.width = '100%';
+
+  let html = `
+        <div class="wizard-step fade-in-up">
+            <h5 class="mb-3">Please review your answers before submitting.</h5>
+            <div class="list-group list-group-flush border rounded mb-3">
+    `;
+
+  wizardState.questions.forEach((q, index) => {
+    if (shouldHideQuestion(q)) return; // Skip hidden
+
+    const answer = wizardState.answers[q.id];
+    let displayAnswer = '<span class="text-muted fst-italic">Not answered</span>';
+    let isMissing = false;
+
+    if (answer) {
+      if (Array.isArray(answer)) {
+        displayAnswer = answer.join(', ');
+      } else {
+        displayAnswer = answer;
+      }
+    } else if (q.required) {
+      displayAnswer = '<span class="text-danger fw-bold"><i class="bi bi-exclamation-circle"></i> Required</span>';
+      isMissing = true;
+    }
+
+    html += `
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
+                 onclick="jumpToQuestion(${index})" style="cursor: pointer;">
+                <div style="flex: 1;">
+                    <small class="text-muted d-block">${q.label}</small>
+                    <div class="fw-medium">${displayAnswer}</div>
+                </div>
+                <div class="text-primary ms-2"><i class="bi bi-pencil-square"></i></div>
+            </div>
+        `;
+  });
+
+  html += `</div>
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Tap any question to edit your answer.
+        </div>
+    </div>`;
+
+  container.innerHTML = html;
+  updateWizardControls();
 }
 
 function validateCurrentStep() {
