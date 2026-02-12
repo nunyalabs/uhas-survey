@@ -5,10 +5,10 @@
 
 console.log('🔷 app.js: Script loading started');
 console.log('🔍 Checking dependencies at load time:');
-console.log('  - window.db:', window.db);
-console.log('  - window.participantManager:', window.participantManager);
-console.log('  - window.Dashboard:', window.Dashboard);
-console.log('  - window.CONFIG:', window.CONFIG);
+console.log('  - globalThis.db:', globalThis.db);
+console.log('  - globalThis.participantManager:', globalThis.participantManager);
+console.log('  - globalThis.Dashboard:', globalThis.Dashboard);
+console.log('  - globalThis.CONFIG:', globalThis.CONFIG);
 
 // ===== STATE =====
 let currentTab = 'dashboard';
@@ -19,16 +19,16 @@ let selectedGroup = null;
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     // Check dependencies
-    if (!window.db) {
+    if (!globalThis.db) {
       throw new Error('Database module not loaded');
     }
-    if (!window.participantManager) {
+    if (!globalThis.participantManager) {
       throw new Error('Participant module not loaded');
     }
-    if (!window.Dashboard) {
+    if (!globalThis.Dashboard) {
       throw new Error('Dashboard module not loaded');
     }
-    if (!window.QUESTIONNAIRES) {
+    if (!globalThis.QUESTIONNAIRES) {
       throw new Error('Questions not loaded');
     }
 
@@ -88,7 +88,7 @@ function attachTabListeners() {
       tab.classList.add('active');
 
       // Switch tab
-      currentTab = tab.getAttribute('data-tab');
+      currentTab = tab.dataset.tab;
       currentView = 'list';
       selectedGroup = null;
       renderCurrentTab();
@@ -458,7 +458,7 @@ async function loadDataTable() {
         <td>${resp.participantId}</td>
         <td>${syncBadge}</td>
         <td>
-          <button class="btn btn-sm btn-outline" onclick='viewResponse(${JSON.stringify(resp).replace(/'/g, "&apos;")})'>
+          <button class="btn btn-sm btn-outline" onclick='viewResponse(${JSON.stringify(resp).replaceAll(/'/g, "&apos;")})'>
             <i class="bi bi-eye"></i>
           </button>
           <button class="btn btn-sm btn-danger" onclick="deleteResponse(${resp.id})">
@@ -725,7 +725,7 @@ async function deleteResponse(id) {
 // ===== SHARE & EXPORT =====
 function _buildFileName(survey) {
   const pid = survey.participantId || survey.id;
-  const site = (survey.studySite || 'unknown').replace(/[^a-zA-Z0-9-]/g, '_');
+  const site = (survey.studySite || 'unknown').replaceAll(/[^a-zA-Z0-9-]/g, '_');
   const date = new Date(survey.createdAt).toISOString().split('T')[0];
   return `${pid}_${site}_${date}.json`;
 }
@@ -819,8 +819,8 @@ function toggleOtherInput(el, otherId, show) {
 
 function attachConditionalLogic() {
   document.querySelectorAll('[data-show-if-field]').forEach(el => {
-    const fieldName = el.getAttribute('data-show-if-field');
-    const expectedValue = el.getAttribute('data-show-if-value');
+    const fieldName = el.dataset.showIfField;
+    const expectedValue = el.dataset.showIfValue;
 
     const inputs = document.querySelectorAll(`[name="${fieldName}"]`);
     inputs.forEach(input => {

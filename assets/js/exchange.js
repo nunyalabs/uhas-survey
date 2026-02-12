@@ -233,7 +233,7 @@ class DataExchange {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     URL.revokeObjectURL(url);
     
     console.log(`✅ Downloaded: ${filename}`);
@@ -241,4 +241,4 @@ class DataExchange {
 }
 
 // Make available globally
-window.DataExchange = DataExchange;
+globalThis.DataExchange = DataExchange;

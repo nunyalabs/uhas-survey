@@ -13,7 +13,7 @@ class Dashboard {
       }
 
       const surveys = await db.getAll('surveys');
-      const stats = this._calculateStats(surveys);
+      // const stats = this._calculateStats(surveys);
 
       let html = `
         <div class="dashboard-container">
@@ -178,9 +178,9 @@ class Dashboard {
 }
 
 // Make available globally
-window.Dashboard = Dashboard;
+globalThis.Dashboard = Dashboard;
 
-console.log('✅ dashboard.js: window.Dashboard assigned', window.Dashboard);
+console.log('✅ dashboard.js: globalThis.Dashboard assigned', globalThis.Dashboard);
 
 // ===== RECORDS PAGE =====
 class RecordsPage {
@@ -252,4 +252,4 @@ class RecordsPage {
   }
 }
 
-window.RecordsPage = RecordsPage;
+globalThis.RecordsPage = RecordsPage;
