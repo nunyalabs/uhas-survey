@@ -1293,7 +1293,7 @@ async function exportData() {
   try {
     // Default to JSON export
     await DataExchange.exportJSON();
-    alert('✅ JSON export complete\n\n📱 Next: Send this file to the researchers via WhatsApp');
+    alert('✅ JSON export complete');
   } catch (error) {
     console.error('❌ Export failed:', error);
     alert(`❌ Export failed: ${error.message}`);
@@ -1324,9 +1324,17 @@ async function viewParticipantGroup(type) {
   container.innerHTML = await Dashboard.renderGroupDetail(type);
 }
 
-function viewResponse(id) {
-  // Share the record as JSON file directly
-  shareOneRecord(id);
+async function viewResponse(id) {
+  try {
+    if (!db.db) await db.init();
+    const numId = typeof id === 'string' ? Number.parseInt(id, 10) : id;
+    const survey = await db.get('surveys', numId);
+    if (!survey) { alert('Record not found'); return; }
+    alert(JSON.stringify(survey, null, 2));
+  } catch (error) {
+    console.error('View failed:', error);
+    alert('❌ Could not load record');
+  }
 }
 
 async function deleteResponse(id) {
@@ -1341,69 +1349,7 @@ async function deleteResponse(id) {
   }
 }
 
-// ===== SHARE & EXPORT =====
-function _buildFileName(survey) {
-  const pid = survey.participantId || survey.id;
-  const site = (survey.studySite || 'unknown').replaceAll(/[^a-zA-Z0-9-]/g, '_');
-  const date = new Date(survey.createdAt).toISOString().split('T')[0];
-  return `${pid}_${site}_${date}.json`;
-}
 
-async function shareOneRecord(id) {
-  try {
-    if (!db.db) await db.init();
-    const numId = typeof id === 'string' ? Number.parseInt(id, 10) : id;
-    const survey = await db.get('surveys', numId);
-    if (!survey) { alert('Record not found'); return; }
-
-    const jsonStr = JSON.stringify(survey, null, 2);
-    const fileName = _buildFileName(survey);
-    // Use text/plain for Android compatibility as many apps filter out application/json
-    const blob = new Blob([jsonStr], { type: 'text/plain' });
-    const file = new File([blob], fileName, { type: 'text/plain' });
-
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title: fileName, files: [file] });
-    } else {
-      DataExchange._downloadFile(jsonStr, fileName, 'application/json');
-    }
-  } catch (error) {
-    if (error.name !== 'AbortError') {
-      console.error('Share failed:', error);
-      alert('❌ Share failed: ' + error.message);
-    }
-  }
-}
-
-async function shareAllRecords() {
-  try {
-    if (!db.db) await db.init();
-    const surveys = await db.getAll('surveys');
-    if (surveys.length === 0) { alert('No records to share'); return; }
-
-    const files = surveys.map(s => {
-      const jsonStr = JSON.stringify(s, null, 2);
-      // Use text/plain for Android compatibility
-      const blob = new Blob([jsonStr], { type: 'text/plain' });
-      return new File([blob], _buildFileName(s), { type: 'text/plain' });
-    });
-
-    if (navigator.canShare?.({ files })) {
-      await navigator.share({ title: 'UHAS Survey Records', files });
-    } else {
-      // Fallback: download each file
-      surveys.forEach(s => {
-        const jsonStr = JSON.stringify(s, null, 2);
-        DataExchange._downloadFile(jsonStr, _buildFileName(s), 'application/json');
-      });
-    }
-  } catch (error) {
-    if (error.name !== 'AbortError') {
-      console.error('Share failed:', error);
-      alert('❌ Share failed: ' + error.message);
-    }
-  }
-}
 
 async function exportAllRecords() {
   try {
@@ -1487,9 +1433,7 @@ function attachConditionalLogic() {
 function showSuccessModal(participantId, studySite, record, customStatusHtml) {
   const modal = document.getElementById('successModal');
   const text = document.getElementById('successModalText');
-  const shareBtn = document.getElementById('successShareBtn');
-
-  if (!modal || !text || !shareBtn) return;
+  if (!modal || !text) return;
 
   const statusContent = customStatusHtml || 'Data saved locally.';
 
@@ -1498,16 +1442,6 @@ function showSuccessModal(participantId, studySite, record, customStatusHtml) {
     <strong>Site:</strong> ${studySite}<br><br>
     ${statusContent}
   `;
-
-  // Attach share handler
-  // Use record.id if it's an object, otherwise treat as ID
-  const id = (typeof record === 'object' && record !== null) ? record.id : record;
-
-  shareBtn.onclick = async () => {
-    // Attempt share
-    await shareOneRecord(id);
-    closeSuccessModal();
-  };
 
   modal.style.display = 'block';
 }
@@ -1518,91 +1452,7 @@ function closeSuccessModal() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ===== SAVE & SHARE =====
-async function submitAndShareCurrentForm() {
-  const questionnaire = QUESTIONNAIRES[currentTab];
-  if (!questionnaire || questionnaire.isDataView) return;
 
-  const form = document.getElementById(`${currentTab}Form`);
-  if (!form) return;
-
-  let studySite = getStudySiteValue();
-  studySite = validateAndResolveStudySite(studySite);
-  if (!studySite) return;
-
-  const invalidFields = form.querySelectorAll(':invalid');
-  if (invalidFields.length > 0) {
-    invalidFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    invalidFields[0].focus();
-    alert('Please fill in all required fields');
-    return;
-  }
-
-  const data = collectFormData(form);
-  data.studySite = studySite;
-
-  const typeMap = {
-    patients: 'patient',
-    clinicians: 'clinician',
-    herbalists: 'herbalist',
-    caregivers: 'caregiver',
-    policymakers: 'policymaker',
-    researchers: 'researcher'
-  };
-
-  const participantType = typeMap[currentTab] || 'researcher';
-  const participantId = participantManager.generateId(participantType);
-
-  const record = {
-    type: currentTab,
-    participantId,
-    studySite,
-    data,
-    createdAt: new Date().toISOString(),
-    synced: false
-  };
-
-  try {
-    const jsonStr = JSON.stringify(record, null, 2);
-    const fileName = _buildFileName(record);
-    const blob = new Blob([jsonStr], { type: 'text/plain' });
-    const file = new File([blob], fileName, { type: 'text/plain' });
-
-    if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title: fileName, files: [file] });
-    } else {
-      DataExchange._downloadFile(jsonStr, fileName, 'application/json');
-    }
-  } catch (error) {
-    if (error.name !== 'AbortError') {
-      console.error('Share failed:', error);
-      alert('❌ Share failed: ' + error.message);
-    }
-  }
-
-  try {
-    if (!db.db) await db.init();
-    const savedRecord = await db.add('surveys', record);
-    console.log('✅ Survey saved to local storage (IndexedDB):', savedRecord);
-
-    localStorage.removeItem(`survey_draft_${currentTab}`);
-    form.reset();
-
-    showSuccessModal(participantId, studySite.toUpperCase(), savedRecord);
-
-    // Auto-sync to Firebase
-    if (window.syncService && navigator.onLine) {
-      syncService.syncSurvey(savedRecord).then(() => {
-        // alert('✅ Data synced to cloud!'); // Optional: separate alert or just toast
-        console.log('✅ Auto-synced to cloud');
-      }).catch(err => console.warn('Sync failed:', err));
-    }
-
-  } catch (error) {
-    console.error('❌ Save to DB failed:', error);
-    alert(`❌ Data sharing initiated, but LOCAL SAVE FAILED: ${error.message}. Please take a screenshot of the filled form.`);
-  }
-}
 
 async function syncAllToCloud() {
   if (!window.syncService) {
@@ -1643,4 +1493,4 @@ async function syncAllToCloud() {
   }
 }
 
-globalThis.submitAndShareCurrentForm = submitAndShareCurrentForm;
+
