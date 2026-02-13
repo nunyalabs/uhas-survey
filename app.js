@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('📦 Loading dependencies...');
 
+    // Wait for Firebase config to load from remote
+    if (window._firebaseReady) {
+      await window._firebaseReady.catch(err => console.warn('⚠️ Firebase config load failed (offline mode):', err.message));
+    }
+
     // Initialize unified database
     await db.init();
     console.log('✅ Database initialized');

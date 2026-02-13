@@ -38,6 +38,7 @@ assets/js/firebase-config.js
 .firebaserc
 .firebase/
 firebase.json
+public/
 
 # Admin
 admin.html
