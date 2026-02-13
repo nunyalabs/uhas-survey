@@ -137,7 +137,7 @@ function renderQuestionnaire(q) {
   const draft = localStorage.getItem(`survey_draft_${q.id}`);
   if (draft) {
     try {
-      const parsed = JSON.parse(draft);
+      JSON.parse(draft);
       // We'll populate fields as we render them, or pre-fill answers
       // For simplicity in wizard, we might just rely on DOM elements retaining state if we hid them, 
       // but since we re-render, we need to store them. 
