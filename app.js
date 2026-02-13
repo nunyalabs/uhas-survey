@@ -1337,6 +1337,13 @@ async function viewResponse(id) {
   }
 }
 
+function _buildFileName(survey) {
+  const pid = survey.participantId || survey.id;
+  const site = (survey.studySite || 'unknown').replaceAll(/[^a-zA-Z0-9-]/g, '_');
+  const date = new Date(survey.createdAt).toISOString().split('T')[0];
+  return `${pid}_${site}_${date}.json`;
+}
+
 async function deleteResponse(id) {
   if (!confirm('Delete this response? This cannot be undone.')) return;
 

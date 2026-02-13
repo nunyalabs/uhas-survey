@@ -33,5 +33,11 @@ build/
 logs/
 *.log
 
+# Firebase (keep config local, not in repo)
+assets/js/firebase-config.js
+.firebaserc
+.firebase/
+firebase.json
+
 # Admin
 admin.html
