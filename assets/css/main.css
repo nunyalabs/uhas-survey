@@ -594,6 +594,23 @@ a:hover {
   margin-bottom: var(--space-md);
 }
 
+/* ============ Progress Bar ============ */
+.progress {
+  background: var(--bg-alt);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+.bg-success {
+  background: var(--success);
+}
+
 /* ============ Mobile-Friendly Likert Scale ============ */
 .likert-container {
   width: 100%;
@@ -1251,7 +1268,9 @@ a:hover {
 
 /* ============ Wizard Styles ============ */
 .wizard-form {
-  height: 100%;
+  min-height: calc(100dvh - 200px);
+  display: flex;
+  flex-direction: column;
 }
 
 .wizard-header {
@@ -1259,10 +1278,67 @@ a:hover {
   padding: var(--space-md);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#wizardStepContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .wizard-step {
   animation: fadeInUp 0.4s ease-out;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Make all question groups fill the panel uniformly */
+.wizard-step .question-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+/* Labels take their natural space */
+.wizard-step .form-label {
+  flex-shrink: 0;
+}
+
+/* Tap options fill remaining space evenly */
+.wizard-step .tap-options {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+/* Likert containers fill available space with scroll */
+.wizard-step .likert-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(100dvh - 320px);
+  padding-right: var(--space-xs);
+}
+
+/* Text/date inputs centered in panel */
+.wizard-step .form-control {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+/* Tap hint text */
+.wizard-step .tap-hint {
+  flex-shrink: 0;
 }
 
 @keyframes fadeInUp {
@@ -1283,18 +1359,88 @@ a:hover {
 
 /* Enhancements for wizard inputs */
 .wizard-form .form-label {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-lg);
   color: var(--primary);
+  line-height: 1.4;
 }
 
 .wizard-form .tap-option {
-  padding: 0.5rem 0;
+  padding: 0;
 }
 
-.wizard-form .tap-btn,
+.wizard-form .tap-btn {
+  border-width: 2px;
+  width: 100%;
+}
+
 .wizard-form .likert-btn {
   border-width: 2px;
+  width: 100%;
+}
+
+/* Wizard footer pinned at bottom */
+.wizard-footer {
+  flex-shrink: 0;
+  padding: var(--space-md) 0;
+  background: transparent;
+}
+
+/* Scale question items inside wizard */
+.wizard-step .likert-item {
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.wizard-step .likert-legend {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: var(--space-sm);
+}
+
+/* Checkbox multi-select in wizard - scrollable if many options */
+.wizard-step .tap-options-multi {
+  max-height: calc(100dvh - 340px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile adjustments for wizard */
+@media (max-width: 480px) {
+  .wizard-form {
+    min-height: calc(100dvh - 180px);
+  }
+
+  .wizard-form .form-label {
+    font-size: 1.05rem;
+    margin-bottom: var(--space-md);
+  }
+
+  .wizard-step .likert-container {
+    max-height: calc(100dvh - 300px);
+  }
+
+  .wizard-step .tap-options-multi {
+    max-height: calc(100dvh - 310px);
+  }
+
+  .wizard-step .tap-btn {
+    min-height: 52px;
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .wizard-step .likert-btn {
+    min-height: 50px;
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .wizard-step .likert-number {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
 }
 

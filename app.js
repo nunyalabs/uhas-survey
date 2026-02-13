@@ -148,17 +148,35 @@ function renderQuestionnaire(q) {
 
   q.sections.forEach(section => {
     section.questions.forEach(question => {
-      wizardState.questions.push({
-        ...question,
-        sectionTitle: section.title,
-        sectionDesc: section.description
-      });
+      if (question.type === 'scale' && question.items && question.items.length > 1) {
+        // Split each scale item into its own wizard step for one-at-a-time flow
+        question.items.forEach((item, idx) => {
+          wizardState.questions.push({
+            id: item.id,
+            label: item.text,
+            type: 'scale-single',
+            required: question.required,
+            scale: question.scale,
+            parentId: question.id,
+            parentItems: question.items,
+            itemIndex: idx,
+            sectionTitle: section.title,
+            sectionDesc: section.description
+          });
+        });
+      } else {
+        wizardState.questions.push({
+          ...question,
+          sectionTitle: section.title,
+          sectionDesc: section.description
+        });
+      }
     });
   });
 
   // Setup container
   let html = `
-    <form id="${q.id}Form" novalidate class="wizard-form" style="height: 100%; display: flex; flex-direction: column;">
+    <form id="${q.id}Form" novalidate class="wizard-form">
       <div id="wizardHeader" class="wizard-header mb-3">
         <div class="d-flex justify-content-between align-items-center">
             <small class="text-muted" id="wizardProgress">Question 1 of ${wizardState.questions.length}</small>
@@ -169,11 +187,11 @@ function renderQuestionnaire(q) {
         <h5 class="mt-2" id="wizardSectionTitle"></h5>
       </div>
 
-      <div id="wizardStepContainer" class="flex-grow-1 d-flex flex-column justify-content-center">
+      <div id="wizardStepContainer">
         <!-- Question injected here -->
       </div>
 
-      <div class="wizard-footer mt-auto pt-3 d-flex gap-2 justify-content-between">
+      <div class="wizard-footer d-flex gap-2 justify-content-between">
         <button type="button" class="btn btn-outline-secondary" id="btnPrev" onclick="wizardPrev()">
           <i class="bi bi-arrow-left"></i> Previous
         </button>
@@ -227,7 +245,10 @@ function renderWizardStep() {
   }
 
   // Update Header
-  document.getElementById('wizardSectionTitle').textContent = qItem.sectionTitle || '';
+  const sectionTitle = qItem.sectionTitle || '';
+  const sectionDesc = qItem.sectionDesc || '';
+  document.getElementById('wizardSectionTitle').innerHTML = sectionTitle + 
+    (sectionDesc ? `<small style="display:block;font-weight:400;font-size:0.8rem;color:var(--text-muted);margin-top:4px;">${sectionDesc}</small>` : '');
   document.getElementById('wizardProgress').textContent = `Question ${wizardState.currentIndex + 1} of ${wizardState.questions.length}`;
   const pct = ((wizardState.currentIndex + 1) / wizardState.questions.length) * 100;
   document.getElementById('wizardProgressBar').style.width = `${pct}%`;
@@ -238,20 +259,50 @@ function renderWizardStep() {
   // Wrap in a fade-in div
   container.innerHTML = `<div class="wizard-step fade-in-up">${qHtml}</div>`;
 
+  // In wizard mode, force the question-group visible.
+  // The wizard handles show/hide via shouldHideQuestion() at navigation level,
+  // but renderQuestion() adds style="display:none;" for showIf questions.
+  const questionGroup = container.querySelector('.question-group');
+  if (questionGroup) {
+    questionGroup.style.display = '';
+    questionGroup.removeAttribute('data-show-if-field');
+    questionGroup.removeAttribute('data-show-if-value');
+  }
+
   // Restore answer if exists in state or draft
   restoreWizardAnswer(qItem.id);
 
-  // Attach auto-advance listeners for radios
-  if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') {
+  // Attach auto-advance listeners for radios (not for scales - they have multiple items)
+  if (qItem.type === 'radio' || qItem.type === 'select' || qItem.type === 'scale-single') {
     const inputs = container.querySelectorAll('input[type="radio"]');
     inputs.forEach(input => {
       input.addEventListener('change', () => {
         console.log('🔘 Radio changed:', input.value);
-        // Delay slightly for visual feedback
+        // Don't auto-advance if "Other" is selected — let user type first
+        if (input.value.toLowerCase().includes('other')) {
+          console.log('⏸️ "Other" selected, waiting for user input');
+          return;
+        }
         setTimeout(() => {
           console.log('⏰ Triggering wizardNext from radio change');
           wizardNext();
         }, 400);
+      });
+    });
+  } else if (qItem.type === 'scale') {
+    // For scale: auto-advance only when ALL items answered
+    const inputs = container.querySelectorAll('input[type="radio"]');
+    inputs.forEach(input => {
+      input.addEventListener('change', () => {
+        // Clear highlight on answered item
+        const itemEl = input.closest('.likert-item');
+        if (itemEl) itemEl.style.outline = 'none';
+
+        const totalItems = qItem.items.length;
+        const answeredItems = container.querySelectorAll('input[type="radio"]:checked').length;
+        if (answeredItems >= totalItems) {
+          setTimeout(() => wizardNext(), 400);
+        }
       });
     });
   }
@@ -282,14 +333,15 @@ function updateWizardControls() {
 function shouldHideQuestion(q) {
   if (!q.showIf) return false;
 
-  // Check dependency value
-  // We need to look up the answer in wizardState.answers or the DOM if it's still there (it's not).
-  // So we MUST store answers in wizardState.answers on change.
-
   const depValue = wizardState.answers[q.showIf.field];
-  const shouldHide = depValue !== q.showIf.value;
-  // console.log(`🙈 shouldHideQuestion ${q.id}: dep=${q.showIf.field} val=${depValue} req=${q.showIf.value} => ${shouldHide}`);
-  return shouldHide;
+  const expectedValue = q.showIf.value;
+
+  // Handle array of accepted values (e.g. showIf: { field: 'x', value: ['a','b'] })
+  if (Array.isArray(expectedValue)) {
+    return !expectedValue.includes(depValue);
+  }
+
+  return depValue !== expectedValue;
 }
 
 function wizardNext() {
@@ -380,7 +432,18 @@ function renderWizardReview() {
     let isMissing = false;
 
     if (answer) {
-      if (Array.isArray(answer)) {
+      if (q.type === 'scale' && typeof answer === 'object' && !Array.isArray(answer)) {
+        // Scale: show each item's answer
+        const scaleLabels = { '1': 'SD', '2': 'D', '3': 'N', '4': 'A', '5': 'SA' };
+        const parts = q.items.map(item => {
+          const v = answer[item.id];
+          return v ? `<span style="display:inline-block;background:var(--primary-light);padding:2px 6px;border-radius:4px;margin:1px;font-size:0.8rem;">${item.id.toUpperCase()}: ${scaleLabels[v] || v}</span>` : `<span style="color:var(--danger);font-size:0.8rem;">${item.id.toUpperCase()}: ?</span>`;
+        });
+        displayAnswer = parts.join(' ');
+      } else if (q.type === 'scale-single') {
+        const scaleLabelsReview = { '1': 'Strongly Disagree', '2': 'Disagree', '3': 'Neutral', '4': 'Agree', '5': 'Strongly Agree' };
+        displayAnswer = `<span style="display:inline-flex;align-items:center;gap:6px;"><strong>${answer}</strong> — ${scaleLabelsReview[answer] || answer}</span>`;
+      } else if (Array.isArray(answer)) {
         displayAnswer = answer.join(', ');
       } else {
         displayAnswer = answer;
@@ -390,11 +453,13 @@ function renderWizardReview() {
       isMissing = true;
     }
 
+    const qLabel = q.type === 'scale' ? (q.sectionTitle || 'Rating Scale') : q.label;
+
     html += `
             <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
                  onclick="jumpToQuestion(${index})" style="cursor: pointer;">
                 <div style="flex: 1;">
-                    <small class="text-muted d-block">${q.label}</small>
+                    <small class="text-muted d-block">${qLabel}</small>
                     <div class="fw-medium">${displayAnswer}</div>
                 </div>
                 <div class="text-primary ms-2"><i class="bi bi-pencil-square"></i></div>
@@ -413,19 +478,35 @@ function renderWizardReview() {
 }
 
 function validateCurrentStep() {
-  // Check required
   const container = document.getElementById('wizardStepContainer');
   const qItem = wizardState.questions[wizardState.currentIndex];
 
   if (qItem.required) {
-    // Check if answered
-    const input = container.querySelector('input:checked, input[type="text"], input[type="date"], select');
-    // Note: this is a rough check. 
-
     let hasValue = false;
-    if (qItem.type === 'checkbox') {
+
+    if (qItem.type === 'scale') {
+      // Scale: ALL items must be answered
+      const totalItems = qItem.items.length;
+      const answeredItems = container.querySelectorAll('input[type="radio"]:checked').length;
+      hasValue = answeredItems >= totalItems;
+
+      if (!hasValue) {
+        // Highlight unanswered items
+        qItem.items.forEach(item => {
+          const checked = container.querySelector(`input[name="${item.id}"]:checked`);
+          const itemEl = container.querySelector(`input[name="${item.id}"]`)?.closest('.likert-item');
+          if (itemEl) {
+            itemEl.style.outline = checked ? 'none' : '2px solid var(--danger)';
+            itemEl.style.borderRadius = 'var(--radius-md)';
+          }
+        });
+        container.classList.add('shake');
+        setTimeout(() => container.classList.remove('shake'), 500);
+        return false;
+      }
+    } else if (qItem.type === 'checkbox') {
       hasValue = container.querySelectorAll('input:checked').length > 0;
-    } else if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') { // Select rendered as radios
+    } else if (qItem.type === 'radio' || qItem.type === 'select' || qItem.type === 'scale-single') {
       hasValue = container.querySelectorAll('input:checked').length > 0;
     } else {
       const val = container.querySelector('input')?.value;
@@ -433,8 +514,6 @@ function validateCurrentStep() {
     }
 
     if (!hasValue) {
-      // alert('Please answer this question.'); 
-      // Better: shake animation or inline error
       container.classList.add('shake');
       setTimeout(() => container.classList.remove('shake'), 500);
       return false;
@@ -453,13 +532,24 @@ function saveCurrentStepAnswer() {
 
   // Extract value
   let val = null;
-  if (qItem.type === 'checkbox') {
+  if (qItem.type === 'scale') {
+    // Scale questions have multiple items, each with their own radio group
+    const scaleAnswers = {};
+    let hasAny = false;
+    qItem.items.forEach(item => {
+      const checked = container.querySelector(`input[name="${item.id}"]:checked`);
+      if (checked) {
+        scaleAnswers[item.id] = checked.value;
+        hasAny = true;
+      }
+    });
+    if (hasAny) val = scaleAnswers;
+  } else if (qItem.type === 'checkbox') {
     const checked = Array.from(container.querySelectorAll('input:checked')).map(cb => cb.value);
 
     // Handle "Other" text for checkboxes
     const otherInput = container.querySelector(`input[name="${qItem.id}_other"]`);
     if (otherInput && otherInput.value.trim()) {
-      // Find if "Other" (or similar) is checked
       const otherIndex = checked.findIndex(v => v.toLowerCase().includes('other'));
       if (otherIndex !== -1) {
         checked[otherIndex] = `Other: ${otherInput.value.trim()}`;
@@ -467,7 +557,7 @@ function saveCurrentStepAnswer() {
     }
 
     if (checked.length > 0) val = checked;
-  } else if (qItem.type === 'radio' || qItem.type === 'scale' || qItem.type === 'select') {
+  } else if (qItem.type === 'radio' || qItem.type === 'select' || qItem.type === 'scale-single') {
     const checked = container.querySelector('input:checked');
     if (checked) {
       val = checked.value;
@@ -495,6 +585,16 @@ function restoreWizardAnswer(qId) {
   if (!val) return;
 
   const container = document.getElementById('wizardStepContainer');
+  const qItem = wizardState.questions[wizardState.currentIndex];
+
+  // Scale questions: val is an object { itemId: value, ... }
+  if (qItem && qItem.type === 'scale' && typeof val === 'object' && !Array.isArray(val)) {
+    Object.entries(val).forEach(([itemId, itemVal]) => {
+      const radio = container.querySelector(`input[name="${itemId}"][value="${itemVal}"]`);
+      if (radio) radio.checked = true;
+    });
+    return;
+  }
 
   if (Array.isArray(val)) { // Checkbox
     val.forEach(v => {
@@ -502,11 +602,9 @@ function restoreWizardAnswer(qId) {
       let otherText = '';
 
       if (v.startsWith('Other: ')) {
-        valueToCheck = 'Other'; // Assuming 'Other' is the value in options
+        valueToCheck = 'Other';
         otherText = v.substring(7);
 
-        // Try to find the exact "Other" option value from inputs if possible, 
-        // or just look for an input with value "Other"
         const otherOpt = Array.from(container.querySelectorAll('input[type="checkbox"]'))
           .find(i => i.value.toLowerCase().includes('other'));
         if (otherOpt) valueToCheck = otherOpt.value;
@@ -527,7 +625,6 @@ function restoreWizardAnswer(qId) {
 
     if (typeof val === 'string' && val.startsWith('Other: ')) {
       otherText = val.substring(7);
-      // Find the radio/option that contains "Other"
       const otherOpt = Array.from(container.querySelectorAll('input[type="radio"]'))
         .find(i => i.value.toLowerCase().includes('other'));
       if (otherOpt) valueToCheck = otherOpt.value;
@@ -560,6 +657,9 @@ function renderQuestion(q, formId) {
     case 'scale':
       html += renderScaleQuestion(q, formId);
       break;
+    case 'scale-single':
+      html += renderScaleSingleQuestion(q, formId);
+      break;
     case 'checkbox':
       html += renderCheckboxQuestion(q, formId);
       break;
@@ -590,9 +690,9 @@ function renderTextQuestion(q, formId) {
 }
 
 function renderSelectQuestion(q, formId) {
-  // Check if "Other" is in options AND there's no dedicated showIf field for it
+  // Check if "Other" is in options
   const hasOther = q.options.some(opt => opt.toLowerCase().includes('other'));
-  const skipAutoOther = q.skipAutoOther || q.id === 'studySite';
+  const skipAutoOther = q.skipAutoOther || false;
   const required = q.required ? 'required' : '';
 
   let html = `
@@ -752,6 +852,42 @@ function renderScaleQuestion(q, formId) {
     html += `
         </div>
       </div>
+    `;
+  });
+
+  html += `</div>`;
+  return html;
+}
+
+function renderScaleSingleQuestion(q, formId) {
+  const required = q.required ? 'required' : '';
+
+  const scaleLabels = {
+    1: 'Strongly Disagree',
+    2: 'Disagree',
+    3: 'Neutral',
+    4: 'Agree',
+    5: 'Strongly Agree'
+  };
+
+  // Show progress within the scale group (e.g. "3 of 10")
+  const progressText = q.parentItems ? `<span class="text-muted" style="font-size:0.8rem;">(${q.itemIndex + 1} of ${q.parentItems.length})</span>` : '';
+
+  let html = `
+    <label class="form-label ${q.required ? 'required' : ''}">${q.label} ${progressText}</label>
+    <div class="tap-options">
+  `;
+
+  q.scale.forEach(val => {
+    html += `
+      <label class="tap-option" for="${formId}_${q.id}_${val}">
+        <input type="radio" name="${q.id}" value="${val}"
+               id="${formId}_${q.id}_${val}" ${required}>
+        <span class="tap-btn">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--bg-alt);font-weight:700;font-size:1.1rem;flex-shrink:0;">${val}</span>
+          <span class="tap-label">${scaleLabels[val]}</span>
+        </span>
+      </label>
     `;
   });
 
@@ -998,10 +1134,16 @@ async function submitCurrentForm() {
     if (shouldHideQuestion(q)) continue; // Skip hidden logic
 
     const val = wizardState.answers[q.id];
-    const isMissing = !val || (Array.isArray(val) && val.length === 0);
+    let isMissing = !val || (Array.isArray(val) && val.length === 0);
+
+    // Scale questions: check all items are answered
+    if (q.type === 'scale' && val && typeof val === 'object' && !Array.isArray(val)) {
+      isMissing = q.items.some(item => !val[item.id]);
+    }
 
     if (q.required && isMissing) {
-      console.warn(`Validation failed at question ${i}: ${q.label}`);
+      const qLabel = q.type === 'scale' ? (q.sectionTitle || 'Rating Scale') : q.label;
+      console.warn(`Validation failed at question ${i}: ${qLabel}`);
       jumpToQuestion(i); // Auto-jump to missing question
 
       // Small delay to allow render, then shake/alert
@@ -1011,18 +1153,39 @@ async function submitCurrentForm() {
           container.classList.add('shake');
           setTimeout(() => container.classList.remove('shake'), 500);
         }
-        alert(`⚠️ Please answer: ${q.label}`);
+        alert(`⚠️ Please answer: ${qLabel}`);
       }, 100);
       return;
     }
   }
 
   // 3. Extract special fields for DB
-  const surveyData = { ...wizardState.answers };
+  const surveyData = {};
+
+  // Flatten scale question answers (objects) into individual keys
+  for (const [key, val] of Object.entries(wizardState.answers)) {
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      // Scale question: spread individual item answers
+      Object.entries(val).forEach(([itemId, itemVal]) => {
+        surveyData[itemId] = itemVal;
+      });
+      // Also keep group reference
+      surveyData[key] = val;
+    } else {
+      surveyData[key] = val;
+    }
+  }
 
   // Study Site is just another field now, but we need it for the record header
   // It should be in surveyData['studySite'] if the question ID is 'studySite'
-  const studySite = surveyData['studySite'] || 'UNKNOWN';
+  let studySite = surveyData['studySite'] || 'UNKNOWN';
+
+  // If studySite is "Other" or "Other: ...", resolve the actual value
+  if (studySite === 'Other' && surveyData['studySiteOther']) {
+    studySite = surveyData['studySiteOther'];
+  } else if (studySite.startsWith('Other: ')) {
+    studySite = studySite.substring(7);
+  }
 
   if (!studySite || studySite === 'UNKNOWN') {
     // Just in case studySite logic is unique or missed
